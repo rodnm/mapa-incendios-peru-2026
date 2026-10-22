@@ -130,3 +130,48 @@ FIXED_MIN_GAP_DAYS = 30
 # Case study: a vegetation fire with a real front
 CASE_MIN_HOTSPOTS = 3
 CASE_MIN_FOOTPRINT_HA = 50
+
+# --- Snapshot (v1.0.0) ----------------------------------------------------------------
+# The delivered analysis is frozen at this cut-off. Snapshot mode always uses it, so a
+# fresh FIRMS download is trimmed to the same instant instead of moving it to "now".
+SNAPSHOT_CUTOFF_UTC = "2026-10-22T01:52:02Z"
+WEB = ROOT / "web"
+
+# --- Live monitor ---------------------------------------------------------------------
+# Same methods as the snapshot, but the cut-off is "now" and the season becomes a
+# rolling window of LIVE_WINDOW_DAYS full UTC days plus the current day.
+LIVE_WINDOW_DAYS = 120
+# NRT files are revised after publication: the current UTC day and this many previous
+# days are downloaded again on every run; older cached days are reused as they are.
+LIVE_REFETCH_DAYS = 2
+LIVE_DEFAULT_OUT = ROOT / "build" / "live"
+LIVE_FIRMS_DIR = RAW / "firms_live"
+LIVE_STATE_DIR = RAW / "live_state"  # history.csv copy, restored from the CI cache
+# Open Buildings extracts are cached on a fixed grid: the bbox of every exposure zone is
+# rounded outwards to OB_TILE_DEG cells, and each cell is downloaded once.
+OB_TILE_DEG = 0.25
+OB_TILE_DIR = RAW / "open_buildings" / f"tiles_{OB_TILE_DEG}deg_conf{OB_MIN_CONFIDENCE}"
+# Published site, used to read back the history of previous runs. Override with the
+# LIVE_BASE_URL environment variable (an empty value disables the remote read).
+LIVE_BASE_URL_DEFAULT = "https://rodnm.github.io/mapa-incendios-peru-2026/"
+LIVE_HISTORY_MAX_ROWS = 2000
+LIVE_MAX_BYTES = 6_000_000  # total size budget of one live output directory
+LIVE_FILES_JSON = ["summary.json", "hotspots.json", "fires.json", "districts.topo.json",
+                   "series.json", "buffers.json"]
+LIVE_FILES_CSV = ["exposure_by_district.csv", "history.csv"]
+HISTORY_COLUMNS = ["generated_at", "data_through", "hotspots_24h", "hotspots_7d", "fires_active",
+                   "urban_flagged_fires", "people_1km", "people_2km", "people_5km", "people_10km",
+                   "buildings_5km"]
+# Quality gate: plausible ranges for one live run (inclusive). Peru has ~34 M people
+# (WorldPop 2026); the snapshot had 325 hotspots in 24 h and 122 active fires.
+LIVE_LIMITS = {
+    "rows_last_48h_min": 1,          # FIRMS must have returned detections in the last 48 h
+    "data_age_max_hours": 48,        # latest acquisition no older than this
+    "hotspots_24h_max": 50_000,
+    "hotspots_7d_max": 200_000,
+    "hotspots_window_min": 1_000,    # 120 days in Peru never have fewer detections
+    "hotspots_window_max": 2_000_000,
+    "fires_active_max": 20_000,
+    "people_max": 34_500_000,
+    "districts_min": 1800,
+}

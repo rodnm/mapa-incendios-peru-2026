@@ -25,27 +25,30 @@ def iso(ts: pd.Timestamp) -> str:
     return ts.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def hours_since_t0(t: pd.Series) -> np.ndarray:
-    return ((t - T0).dt.total_seconds() // 3600).astype(int).values
+def hours_since_t0(t: pd.Series, t0: pd.Timestamp = T0) -> np.ndarray:
+    return ((t - t0).dt.total_seconds() // 3600).astype(int).values
 
 
 # ----------------------------------------------------------------------------- pieces
-def export_hotspots(h: pd.DataFrame, active_ids: set) -> bool:
+# Every writer takes an optional out_dir; the default (C.WEB_DATA) is the snapshot target.
+def export_hotspots(h: pd.DataFrame, active_ids: set, out_dir: Path | None = None,
+                    t0: pd.Timestamp = T0) -> bool:
     h = h.assign(f=np.where(h["cluster"].isin(active_ids), h["cluster"], -1))
+    path = (out_dir or C.WEB_DATA) / "hotspots.json"
 
     def build(df):
         return {
-            "t0": iso(T0),
+            "t0": iso(t0),
             "x": df["lon"].round(4).tolist(),
             "y": df["lat"].round(4).tolist(),
-            "t": hours_since_t0(df["time"]).tolist(),
+            "t": hours_since_t0(df["time"], t0).tolist(),
             "frp": df["frp"].round().astype(int).tolist(),
             "s": df["sat"].astype(int).tolist(),
             "f": df["f"].astype(int).tolist(),
         }
 
     df = h.sort_values("time")
-    size = dump(build(df), C.WEB_DATA / "hotspots.json")
+    size = dump(build(df), path)
     dedup = False
     factor = 1
     while size > C.HOTSPOTS_MAX_BYTES and factor <= 4:
@@ -55,14 +58,15 @@ def export_hotspots(h: pd.DataFrame, active_ids: set) -> bool:
         dd = (key.sort_values("frp", ascending=False)
                  .drop_duplicates(subset=["gx", "gy", "day"])
                  .sort_values("time"))
-        size = dump(build(dd), C.WEB_DATA / "hotspots.json")
+        size = dump(build(dd), path)
         factor += 1
     n_out = len(dd) if dedup else len(df)
     return dedup, n_out, (factor - 1) if dedup else 0
 
 
-def export_series(h: pd.DataFrame, cutoff: pd.Timestamp) -> None:
-    days = pd.date_range(C.SEASON_START, cutoff.tz_convert(None).normalize(), freq="D")
+def export_series(h: pd.DataFrame, cutoff: pd.Timestamp, out_dir: Path | None = None,
+                  start: str = C.SEASON_START) -> None:
+    days = pd.date_range(start, cutoff.tz_convert(None).normalize(), freq="D")
     d = h.assign(date=h["time"].dt.tz_convert(None).dt.normalize())
     tab = d.groupby(["date", "sat"]).size().unstack(fill_value=0).reindex(days, fill_value=0)
     for k in range(len(C.SATELLITES)):
@@ -74,10 +78,10 @@ def export_series(h: pd.DataFrame, cutoff: pd.Timestamp) -> None:
         "snpp": tab[0].astype(int).tolist(),
         "noaa20": tab[1].astype(int).tolist(),
         "noaa21": tab[2].astype(int).tolist(),
-    }, C.WEB_DATA / "series.json")
+    }, (out_dir or C.WEB_DATA) / "series.json")
 
 
-def export_fires(active: pd.DataFrame) -> list:
+def export_fires(active: pd.DataFrame, out_dir: Path | None = None) -> list:
     out = []
     for r in active.itertuples():
         out.append({
@@ -94,11 +98,11 @@ def export_fires(active: pd.DataFrame) -> list:
             "urban": bool(r.urban),
             "flag_reason": r.flag_reason or None,
         })
-    dump(out, C.WEB_DATA / "fires.json")
+    dump(out, (out_dir or C.WEB_DATA) / "fires.json")
     return out
 
 
-def export_districts(districts: gpd.GeoDataFrame, exp: pd.DataFrame) -> str:
+def export_districts(districts: gpd.GeoDataFrame, exp: pd.DataFrame, out_dir: Path | None = None) -> str:
     props = exp.reindex(districts["id"].values)
     g = districts[["id", "name", "province", "department", "geometry"]].rename(
         columns={"province": "prov", "department": "dep"}).reset_index(drop=True)
@@ -111,7 +115,8 @@ def export_districts(districts: gpd.GeoDataFrame, exp: pd.DataFrame) -> str:
         g[f"p{r}"] = props[f"people_{r}km"].round().astype(int).values
     g["b5"] = props["buildings_5km"].astype(int).values
 
-    out = C.WEB_DATA / "districts.topo.json"
+    out_dir = out_dir or C.WEB_DATA
+    out = out_dir / "districts.topo.json"
     try:
         import topojson as tp
         for eps in (0.004, 0.006, 0.009, 0.013, 0.02):
@@ -126,11 +131,11 @@ def export_districts(districts: gpd.GeoDataFrame, exp: pd.DataFrame) -> str:
         print("[districts] TopoJSON failed, falling back to GeoJSON:", exc)
         g2 = g.copy()
         g2["geometry"] = g2.geometry.simplify(0.01, preserve_topology=True)
-        g2.to_file(C.WEB_DATA / "districts.geojson", driver="GeoJSON", COORDINATE_PRECISION=4)
+        g2.to_file(out_dir / "districts.geojson", driver="GeoJSON", COORDINATE_PRECISION=4)
         return "geojson"
 
 
-def export_district_csv(districts: gpd.GeoDataFrame, exp: pd.DataFrame) -> pd.DataFrame:
+def export_district_csv(districts: gpd.GeoDataFrame, exp: pd.DataFrame, out_dir: Path | None = None) -> pd.DataFrame:
     info = districts.set_index("id")[["department", "province", "name"]].rename(columns={"name": "district"})
     t = info.join(exp)
     cols = [f"people_{r}km" for r in C.RADII_KM] + [f"buildings_{r}km" for r in C.RADII_KM]
@@ -141,7 +146,7 @@ def export_district_csv(districts: gpd.GeoDataFrame, exp: pd.DataFrame) -> pd.Da
     t = t.reset_index().rename(columns={"index": "id"})
     t = t[["id", "department", "province", "district"] + cols + ["hotspots_7d"]].sort_values(
         "people_5km", ascending=False)
-    t.to_csv(C.WEB_DATA / "exposure_by_district.csv", index=False, encoding="utf-8")
+    t.to_csv((out_dir or C.WEB_DATA) / "exposure_by_district.csv", index=False, encoding="utf-8")
     return t
 
 
@@ -199,7 +204,6 @@ def run() -> dict:
     active = pd.read_pickle(C.INTERIM / "active_fires.pkl")
     exp = pd.read_pickle(C.INTERIM / "exposure_by_district.pkl")
     districts = load_districts()
-    worldpop_total = float(exp["pop"].sum())
 
     dedup, n_points, dedup_cells = export_hotspots(h, set(active.loc[~active["urban"], "cluster"]))
     export_series(h, cutoff)
@@ -221,11 +225,45 @@ def run() -> dict:
             round(float(pts[:, 0].max()), 5), round(float(pts[:, 1].max()), 5)]
 
     since7 = cutoff - pd.Timedelta(days=7)
+    case = {
+        "fire_id": int(cs_fire["cluster"]), "name": f"Incendio de {cs_fire['name']}", "district": cs_fire["name"],
+        "province": cs_fire["province"], "department": cs_fire["department"],
+        "lon": round(float(cs_fire["lon"]), 5), "lat": round(float(cs_fire["lat"]), 5), "bbox": bbox,
+        "people_1km": int(round(cs_fire["people_1km"])), "people_5km": int(round(cs_fire["people_5km"])),
+        "buildings_1km": int(cs_fire["buildings_1km"]), "buildings_5km": int(cs_fire["buildings_5km"]),
+        "nearest_building_m": int(round(nearest)) if nearest is not None else None,
+        "footprint_ha": round(float(cs_fire["footprint_ha"]), 1),
+        "first_seen": iso(cs_fire["first_seen"]), "last_seen": iso(cs_fire["last_seen"]),
+        "buildings_shown": kept, "selection_notes": cs_notes,
+    }
+    summary = build_summary(meta, hstats, totals, flagged, active, exp, table,
+                            (dedup, n_points, dedup_cells), topo_kind, case_study=case)
+    dump(summary, C.WEB_DATA / "summary.json")
+
+    # Static map + findings
+    act_ids = set(active.loc[~active["urban"], "cluster"])
+    h7 = h[(h["time"] >= since7) & h["cluster"].isin(act_ids)]
+    static_map(districts, exp, h7, meta["cutoff_lima"])
+    findings = build_findings(summary, table)
+    (C.OUTPUTS / "hallazgos.json").write_text(json.dumps(findings, ensure_ascii=False, indent=1), encoding="utf-8")
+    print("[export] case study:", summary["case_study"])
+    return summary
+
+
+def build_summary(meta: dict, hstats: dict, totals: dict, flagged: dict, active: pd.DataFrame,
+                  exp: pd.DataFrame, table: pd.DataFrame, points: tuple, topo_kind: str,
+                  season_start: str = C.SEASON_START, case_study: dict | None = None) -> dict:
+    """summary.json: headline figures, exposure by radius, top districts and thresholds.
+
+    `points` is the (deduplicated, n_points, dedup_cells) tuple returned by export_hotspots.
+    """
+    dedup, n_points, dedup_cells = points
+    worldpop_total = float(exp["pop"].sum())
     top = table.head(10)
-    summary = {
+    return {
         "cutoff_utc": meta["cutoff_utc"],
         "cutoff_lima": meta["cutoff_lima"],
-        "season_start": C.SEASON_START,
+        "season_start": season_start,
         "satellites": C.SATELLITE_LABELS,
         "hotspots_season": hstats["hotspots_season"],
         "hotspots_7d": hstats["hotspots_7d"],
@@ -244,17 +282,7 @@ def run() -> dict:
             {"id": r.id, "name": r.district, "province": r.province, "department": r.department,
              "people_5km": int(r.people_5km), "buildings_5km": int(r.buildings_5km), "hotspots_7d": int(r.hotspots_7d)}
             for r in top.itertuples()],
-        "case_study": {
-            "fire_id": int(cs_fire["cluster"]), "name": f"Incendio de {cs_fire['name']}", "district": cs_fire["name"],
-            "province": cs_fire["province"], "department": cs_fire["department"],
-            "lon": round(float(cs_fire["lon"]), 5), "lat": round(float(cs_fire["lat"]), 5), "bbox": bbox,
-            "people_1km": int(round(cs_fire["people_1km"])), "people_5km": int(round(cs_fire["people_5km"])),
-            "buildings_1km": int(cs_fire["buildings_1km"]), "buildings_5km": int(cs_fire["buildings_5km"]),
-            "nearest_building_m": int(round(nearest)) if nearest is not None else None,
-            "footprint_ha": round(float(cs_fire["footprint_ha"]), 1),
-            "first_seen": iso(cs_fire["first_seen"]), "last_seen": iso(cs_fire["last_seen"]),
-            "buildings_shown": kept, "selection_notes": cs_notes,
-        },
+        "case_study": case_study,
         "priority_formula": C.PRIORITY_FORMULA,
         "season_points_deduplicated": dedup,
         "season_points": n_points,
@@ -272,16 +300,6 @@ def run() -> dict:
             "case_min_hotspots": C.CASE_MIN_HOTSPOTS, "case_min_footprint_ha": C.CASE_MIN_FOOTPRINT_HA,
         },
     }
-    dump(summary, C.WEB_DATA / "summary.json")
-
-    # Static map + findings
-    act_ids = set(active.loc[~active["urban"], "cluster"])
-    h7 = h[(h["time"] >= since7) & h["cluster"].isin(act_ids)]
-    static_map(districts, exp, h7, meta["cutoff_lima"])
-    findings = build_findings(summary, table)
-    (C.OUTPUTS / "hallazgos.json").write_text(json.dumps(findings, ensure_ascii=False, indent=1), encoding="utf-8")
-    print("[export] case study:", summary["case_study"])
-    return summary
 
 
 def fmt(n: float) -> str:

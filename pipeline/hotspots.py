@@ -49,6 +49,12 @@ def load_meta() -> dict:
 
 def load_raw_hotspots() -> pd.DataFrame:
     df = pd.read_csv(C.RAW / "firms" / "viirs_season.csv", dtype={"acq_time": str})
+    return prepare_raw(df)
+
+
+def prepare_raw(df: pd.DataFrame) -> pd.DataFrame:
+    """FIRMS CSV rows (plus a sat_key column) -> the columns used by clean()."""
+    df = df.copy()
     df["acq_time"] = df["acq_time"].astype(str).str.zfill(4)
     df["time"] = pd.to_datetime(df["acq_date"] + " " + df["acq_time"], format="%Y-%m-%d %H%M", utc=True)
     df["sat"] = df["sat_key"].map({k: i for i, k in enumerate(C.SATELLITES)}).astype(int)
@@ -164,24 +170,31 @@ def run() -> dict:
     # Stable public fire ids: active fires ranked later by priority; here use cluster ids
     df.to_pickle(out_h)
     fires.to_pickle(out_f)
-    since24 = cutoff - pd.Timedelta(hours=24)
-    since7 = cutoff - pd.Timedelta(days=7)
     stats = {
         "cutoff_utc": meta["cutoff_utc"],
         "cutoff_lima": meta["cutoff_lima"],
         "rows_downloaded": int(len(raw)),
         "removed": removed,
+        **counts(df, fires, cutoff),
+        "districts": int(len(districts)),
+    }
+    out_m.write_text(json.dumps(stats, indent=1), encoding="utf-8")
+    print("[hotspots]", json.dumps(stats))
+    return stats
+
+
+def counts(df: pd.DataFrame, fires: pd.DataFrame, cutoff: pd.Timestamp) -> dict:
+    """Hotspot and fire counts at the cut-off (cleaned hotspots, all fires)."""
+    since24 = cutoff - pd.Timedelta(hours=24)
+    since7 = cutoff - pd.Timedelta(days=7)
+    return {
         "hotspots_season": int(len(df)),
         "hotspots_7d": int((df["time"] >= since7).sum()),
         "hotspots_24h": int((df["time"] >= since24).sum()),
         "fires_total": int(len(fires)),
         "fires_active": int(fires["active"].sum()),
         "fires_active_gt100ha": int((fires["active"] & (fires["footprint_ha"] > 100)).sum()),
-        "districts": int(len(districts)),
     }
-    out_m.write_text(json.dumps(stats, indent=1), encoding="utf-8")
-    print("[hotspots]", json.dumps(stats))
-    return stats
 
 
 if __name__ == "__main__":

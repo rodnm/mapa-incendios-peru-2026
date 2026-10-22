@@ -143,7 +143,8 @@ def flag_fires(active: pd.DataFrame, h: pd.DataFrame) -> pd.DataFrame:
     return active
 
 
-def export_buffers(zones: dict, tol_m: float = 75.0, max_bytes: int = 600_000) -> dict:
+def export_buffers(zones: dict, tol_m: float = 75.0, max_bytes: int = 600_000,
+                   out_dir: Path | None = None, write_meta: bool = True) -> dict:
     """Write the dissolved exposure zones (after the urban filter) as GeoJSON geometries."""
     out, dropped = {}, []
     for r in C.RADII_KM:
@@ -151,22 +152,44 @@ def export_buffers(zones: dict, tol_m: float = 75.0, max_bytes: int = 600_000) -
         g = shapely.set_precision(g, 0.0001)
         if g.geom_type == "Polygon":
             g = shapely.MultiPolygon([g])
+        elif g.is_empty:  # no active vegetation fire: keep the geometry type stable
+            g = shapely.MultiPolygon()
         out[str(r)] = json.loads(shapely.to_geojson(g))
-    path = C.WEB_DATA / "buffers.json"
+    path = (out_dir or C.WEB_DATA) / "buffers.json"
     path.write_text(json.dumps(out, separators=(",", ":")), encoding="utf-8")
     if path.stat().st_size > max_bytes:
         dropped.append("10")
         out.pop("10")
         path.write_text(json.dumps(out, separators=(",", ":")), encoding="utf-8")
     info = {"bytes": path.stat().st_size, "dropped": dropped, "tolerance_m": tol_m}
-    (C.INTERIM / "buffers_meta.json").write_text(json.dumps(info), encoding="utf-8")
+    if write_meta:
+        (C.INTERIM / "buffers_meta.json").write_text(json.dumps(info), encoding="utf-8")
     print("[buffers]", info)
     return info
 
 
 def run() -> dict:
+    """Snapshot step: read the interim hotspots/fires, write the interim exposure files."""
     h, fires, cutoff = load_inputs()
-    districts = load_districts()
+    res = compute(h, fires, cutoff, load_districts())
+    export_buffers(res["zones"])
+    res["pts_all"].to_pickle(C.INTERIM / "front_points.pkl")
+    res["active"].to_pickle(C.INTERIM / "active_fires.pkl")
+    res["by_district"].to_pickle(C.INTERIM / "exposure_by_district.pkl")
+    (C.INTERIM / "exposure_totals.json").write_text(json.dumps(res["totals"], indent=1), encoding="utf-8")
+    (C.INTERIM / "urban_flagged.json").write_text(json.dumps(res["flagged"], indent=1), encoding="utf-8")
+    print("[exposure]", json.dumps(res["totals"]))
+    print("[flagged]", json.dumps(res["flagged"]))
+    return res["totals"]
+
+
+def compute(h: pd.DataFrame, fires: pd.DataFrame, cutoff: pd.Timestamp, districts: gpd.GeoDataFrame,
+            fetch=fetch_buildings) -> dict:
+    """Exposure, urban/fixed flags and priority of the active fires, without writing files.
+
+    `fetch(zone_ea)` returns the Open Buildings points inside the 10 km zone; the snapshot
+    uses one cached extract, the live monitor a tile cache.
+    """
     d_ea = districts.to_crs(C.CRS_EQUAL_AREA)
     pts_all = front_points(h, fires, cutoff)
     active = fires[fires["active"]].copy()
@@ -178,7 +201,7 @@ def run() -> dict:
         fire_zones[r] = pd.Series({k: shapely.union_all(bv[idx])
                                    for k, idx in pts_all.groupby("cluster").indices.items()})
     zone_all_10 = shapely.union_all(list(fire_zones[max(C.RADII_KM)].values))
-    buildings = fetch_buildings(zone_all_10)
+    buildings = fetch(zone_all_10)
     print(f"[buildings] {len(buildings)} buildings (conf >= {C.OB_MIN_CONFIDENCE}) inside the 10 km zone")
 
     for r in C.RADII_KM:
@@ -195,8 +218,6 @@ def run() -> dict:
     for r in C.RADII_KM:
         zones[r] = shapely.union_all(pts.buffer(r * 1000, quad_segs=16).values)
 
-    export_buffers(zones)
-
     # Per-district exposure (dissolved zones: no double counting)
     by_district = pd.DataFrame(index=districts["id"])
     totals = {}
@@ -206,8 +227,12 @@ def run() -> dict:
         pieces = list(cand.geometry.intersection(Z).values)
         ppl = people_sum(pieces)
         bld = count_in(buildings, pieces)
-        by_district.loc[cand["id"].values, f"people_{r}km"] = ppl
-        by_district.loc[cand["id"].values, f"buildings_{r}km"] = bld
+        if len(cand):
+            by_district.loc[cand["id"].values, f"people_{r}km"] = ppl
+            by_district.loc[cand["id"].values, f"buildings_{r}km"] = bld
+        else:  # no active vegetation fire
+            by_district[f"people_{r}km"] = 0.0
+            by_district[f"buildings_{r}km"] = 0.0
         totals[str(r)] = {
             "people": int(round(ppl.sum())),
             "buildings": int(bld.sum()),
@@ -231,17 +256,23 @@ def run() -> dict:
     # Priority index, only among non-flagged active fires
     def n(x):
         x = np.asarray(x, dtype=float)
+        if x.size == 0:
+            return x
         span = x.max() - x.min()
         return (x - x.min()) / span if span > 0 else np.zeros_like(x)
 
     W = C.PRIORITY_WEIGHTS
     ok = ~active["urban"]
     a = active[ok]
+    if a.empty:  # no active vegetation fire: no priority to compute
+        for col in ("part_people", "part_footprint", "part_frp", "part_activity"):
+            active[col] = np.nan
     for col, val in (("part_people", W["people"] * n(np.log1p(a["people_5km"]))),
                      ("part_footprint", W["footprint"] * n(a["footprint_ha"])),
                      ("part_frp", W["frp"] * n(a["frp24"])),
                      ("part_activity", W["activity"] * n(a["n24"]))):
-        active.loc[ok, col] = val
+        if not a.empty:
+            active.loc[ok, col] = val
     active["priority"] = 100 * (active["part_people"] + active["part_footprint"]
                                 + active["part_frp"] + active["part_activity"])
     active = active.sort_values(["urban", "priority"], ascending=[True, False])
@@ -256,15 +287,8 @@ def run() -> dict:
         "hotspots_24h": int(flagged["n24"].sum()),
         "people_5km": int(round(flagged_people_5km)),
     }
-
-    pts_all.to_pickle(C.INTERIM / "front_points.pkl")
-    active.to_pickle(C.INTERIM / "active_fires.pkl")
-    by_district.to_pickle(C.INTERIM / "exposure_by_district.pkl")
-    (C.INTERIM / "exposure_totals.json").write_text(json.dumps(totals, indent=1), encoding="utf-8")
-    (C.INTERIM / "urban_flagged.json").write_text(json.dumps(totals_flag, indent=1), encoding="utf-8")
-    print("[exposure]", json.dumps(totals))
-    print("[flagged]", json.dumps(totals_flag))
-    return totals
+    return {"pts_all": pts_all, "active": active, "by_district": by_district, "totals": totals,
+            "flagged": totals_flag, "zones": zones}
 
 
 # ----------------------------------------------------------------------------- case study
