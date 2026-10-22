@@ -1,0 +1,95 @@
+# Live monitor: recompute the exposure figures with the latest NASA FIRMS data and publish
+# the site (monitor + frozen v1.0.0 story) to GitHub Pages. Nothing is committed to the repo.
+# If the pipeline or its quality gate fails, no artifact is uploaded and the previous
+# deployment stays live.
+name: Live monitor
+
+on:
+  schedule:
+    - cron: "30 */3 * * *"  # 00:30, 03:30, ... UTC (19:30, 22:30, ... in Lima)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: live-monitor
+  cancel-in-progress: false
+
+env:
+  UV_FROZEN: "1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      # WorldPop and the district shapefile never change: download them once.
+      - name: Restore static inputs
+        uses: actions/cache@v6
+        with:
+          path: |
+            data/raw/worldpop
+            data/raw/districts
+          key: live-static-v1
+
+      # FIRMS day files, Open Buildings grid cells and the history copy grow from run to
+      # run, so each run saves a new entry and the next one restores the latest.
+      - name: Restore FIRMS, Open Buildings and history caches
+        id: incremental
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            data/raw/firms_live
+            data/raw/open_buildings
+            data/raw/live_state
+            ~/.duckdb/extensions
+          key: live-incremental-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            live-incremental-v1-
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Live pipeline
+        env:
+          FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
+        run: uv run python -m pipeline.run_all --mode live --out build/live
+
+      # Keep downloaded days and cells even when the quality gate fails.
+      - name: Save FIRMS, Open Buildings and history caches
+        if: always()
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            data/raw/firms_live
+            data/raw/open_buildings
+            data/raw/live_state
+            ~/.duckdb/extensions
+          key: ${{ steps.incremental.outputs.cache-primary-key }}
+
+      - name: Build site
+        run: uv run python scripts/build_site.py --live build/live --out site
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
