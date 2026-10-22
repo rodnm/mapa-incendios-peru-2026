@@ -65,12 +65,17 @@ b, strong { font-weight: 700; }
 
 /* Story */
 .scrolly { position: relative; }
-.stage { position: sticky; top: 0; height: 100vh; height: 100svh; background: var(--night); overflow: hidden; }
+/* The stage uses the large viewport so the WebGL canvas never resizes when phone toolbars show or hide. */
+.stage { position: sticky; top: 0; height: 100vh; height: 100lvh; background: var(--night); overflow: hidden; }
 .map { position: absolute; inset: 0; }
-.steps { position: relative; z-index: 2; margin-top: -100vh; margin-top: -100svh; pointer-events: none; }
+.steps { position: relative; z-index: 2; margin-top: -100vh; margin-top: -100lvh; pointer-events: none; }
 .step { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; padding-left: var(--gutter-l); padding-right: var(--gutter-r); padding-block: 10vh; box-sizing: border-box; }
 .step:first-child { align-items: flex-start; padding-block: 7vh 10vh; }
-.card { pointer-events: auto; width: min(27rem, 100%); box-sizing: border-box; background: var(--card); border: 1px solid var(--card-line); border-radius: 6px; padding: 1.25rem 1.375rem 1.375rem; display: grid; gap: 0.8rem; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.card { pointer-events: auto; width: min(27rem, 100%); box-sizing: border-box; background: var(--card); border: 1px solid var(--card-line); border-radius: 6px; padding: 1.25rem 1.375rem 1.375rem; display: grid; gap: 0.8rem; }
+/* Blur over a moving map is expensive on phones, so only precise-pointer screens get it. */
+@media (hover: hover) and (pointer: fine) {
+  .card { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+}
 .card h2 { font-size: 1.75rem; }
 .card.hero { width: min(33rem, 100%); gap: 1rem; padding: 1.5rem 1.5rem 1.375rem; }
 .hero h1 { font-size: clamp(2.6rem, 5.4vw, 4.25rem); font-weight: 380; letter-spacing: -0.02em; line-height: 0.98; }
@@ -110,7 +115,7 @@ b, strong { font-weight: 700; }
 .key .k-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--people-mark); box-sizing: border-box; }
 
 /* Map overlays (always on the night surface) */
-.legend { position: absolute; z-index: 3; right: calc(var(--gutter-r) + 4px); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 15rem; box-sizing: border-box; color: var(--night-ink); background: rgba(7, 11, 20, 0.74); border: 1px solid var(--night-line); border-radius: 6px; padding: 0.75rem 0.875rem; font-size: 0.8125rem; line-height: 1.4; display: grid; gap: 0.6rem; }
+.legend { position: absolute; z-index: 3; right: calc(var(--gutter-r) + 4px); bottom: calc(124px + env(safe-area-inset-bottom, 0px)); width: 15rem; box-sizing: border-box; color: var(--night-ink); background: rgba(7, 11, 20, 0.74); border: 1px solid var(--night-line); border-radius: 6px; padding: 0.75rem 0.875rem; font-size: 0.8125rem; line-height: 1.4; display: grid; gap: 0.6rem; }
 .legend h3 { font-family: var(--sans); font-size: 0.8125rem; font-weight: 700; color: var(--night-ink); }
 .legend .muted { color: var(--night-muted); }
 .ramp { height: 8px; border-radius: 4px; }
@@ -131,7 +136,7 @@ b, strong { font-weight: 700; }
 
 @media (max-width: 759px) {
   .step { align-items: flex-end; padding-block: 8vh 5vh; }
-  .step:first-child { align-items: flex-end; }
+  .step:first-child { align-items: flex-end; padding-top: calc(72px + env(safe-area-inset-top, 0px)); }
   .card, .card.hero { width: 100%; }
   .card { padding: 1rem 1.05rem 1.1rem; gap: 0.6rem; font-size: 0.9375rem; }
   .card h2 { font-size: 1.45rem; }
@@ -139,12 +144,57 @@ b, strong { font-weight: 700; }
   .hero h1 { font-size: 2.15rem; }
   .lede { font-size: 0.9375rem; }
   #spark { height: 40px; }
-  .legend { top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; width: 10.5rem; padding: 0.5rem 0.6rem; font-size: 0.6875rem; gap: 0.4rem; }
+  .legend { top: calc(70px + env(safe-area-inset-top, 0px)); bottom: auto; width: 10.5rem; padding: 0.5rem 0.6rem; font-size: 0.6875rem; gap: 0.4rem; }
   .legend h3 { font-size: 0.6875rem; }
   .biv-grid { grid-template-columns: repeat(3, 15px); grid-template-rows: repeat(3, 15px); }
   .biv-grid .sw { width: 15px !important; height: 15px !important; }
   .stage[data-step="0"] .legend { display: none; }
   .attrib { display: none; }
+}
+
+/* "Ver como película": a fixed player shown only while the story is on screen */
+.film { position: fixed; z-index: 12; right: calc(var(--gutter-r) + 4px); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 15rem; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.45rem; padding: 0.5rem; color: var(--night-ink); background: rgba(7, 11, 20, 0.92); border: 1px solid var(--night-line); border-radius: 8px; }
+.film button { font: 600 0.875rem/1 var(--sans); color: var(--night-ink); background: transparent; border: 1px solid var(--night-line); border-radius: 999px; min-height: 40px; padding: 0 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; }
+.film .film-play { background: #e9edf3; color: #070b14; border-color: #e9edf3; }
+.film .film-play svg { width: 14px; height: 14px; fill: currentColor; flex: none; }
+.film .i-pause, .film.is-playing .i-play { display: none; }
+.film.is-playing .i-pause { display: block; }
+.film .film-speed { min-width: 52px; font-variant-numeric: tabular-nums; }
+.film-dots { grid-column: 1 / -1; display: flex; justify-content: space-between; list-style: none; margin: 0; padding: 0; }
+.film .film-dots button { width: 30px; height: 30px; min-height: 0; padding: 0; border: 0; border-radius: 50%; }
+.film-dots i { display: block; width: 8px; height: 8px; border-radius: 50%; background: rgba(201, 210, 223, 0.35); transition: transform 0.2s, background-color 0.2s; }
+.film-dots button[aria-current="step"] i { background: #ffb03b; transform: scale(1.3); }
+.film-bar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: rgba(201, 210, 223, 0.16); overflow: hidden; }
+.film-bar i { display: block; width: 0; height: 100%; background: #ffb03b; }
+@media (hover: hover) and (pointer: fine) {
+  .film { background: rgba(7, 11, 20, 0.78); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+}
+
+/* Secondary card text folds behind "Ver detalle" on phones so the map stays visible. */
+.more { display: none; }
+
+@media (max-width: 759px) {
+  .film { top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; left: var(--gutter-l); right: var(--gutter-r); width: auto; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; padding: 0.3rem 0.4rem; }
+  .film .film-play { width: 44px; height: 44px; padding: 0; }
+  .film .film-play .film-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .film-dots { grid-column: 2; grid-row: 1; }
+  .film .film-dots button { width: 28px; height: 44px; border-radius: 6px; }
+  .film .film-speed { min-height: 44px; }
+  .film-bar { grid-row: 2; }
+  .card .extra { display: none; }
+  .card.open .extra { display: block; }
+  .card.open .key.extra { display: flex; }
+  .more { display: inline-flex; justify-self: start; }
+}
+
+/* Touch screens get 44 px targets. */
+@media (pointer: coarse) {
+  .btn, .seg button { min-height: 44px; }
+  .seg button { min-width: 44px; }
+  .check { min-height: 44px; }
+  .zoom button { width: 44px; height: 44px; }
+  .pick .close { width: 44px; height: 44px; top: 2px; right: 2px; }
+  td .go { min-height: 44px; display: inline-flex; align-items: center; }
 }
 
 /* Sections after the story */
@@ -182,6 +232,8 @@ b, strong { font-weight: 700; }
 .pick dt { color: var(--night-muted); }
 .pick dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .pick .close { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; color: var(--night-ink); background: transparent; border: 0; cursor: pointer; font-size: 1.125rem; }
+.map-hint { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; max-width: 80%; text-align: center; color: #e9edf3; background: rgba(7, 11, 20, 0.9); border: 1px solid var(--night-line); border-radius: 6px; padding: 0.6rem 0.9rem; font-size: 0.9375rem; pointer-events: none; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 @media (max-width: 919px) {
   .explorer { grid-template-columns: minmax(0, 1fr); }
   .map-frame { order: -1; height: 62svh; min-height: 22rem; }
@@ -259,8 +311,8 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
         <div class="card">
           <h2>El fuego de hoy</h2>
           <p>En las 24 horas previas al corte hubo <b class="fire-t" id="k-24h">n. d.</b> focos, y <b id="k-7d">n. d.</b> en los últimos 7 días. Al unir los focos que están a menos de 1 km y 48 horas entre sí, quedan <b id="k-fires">n. d.</b> incendios activos; <b id="k-big">n. d.</b> tienen una huella mayor a 100 hectáreas.</p>
-          <p class="small">Cada anillo es un incendio activo y su tamaño muestra la huella: los píxeles de 375 m donde se detectó fuego. La huella no es el área quemada oficial.</p>
-          <p class="small" id="k-urban" hidden></p>
+          <p class="small extra">Cada anillo es un incendio activo y su tamaño muestra la huella: los píxeles de 375 m donde se detectó fuego. La huella no es el área quemada oficial.</p>
+          <p class="small extra" id="k-urban" hidden></p>
           <div>
             <p class="small">Los de mayor prioridad:</p>
             <ol class="list" id="top-fires"></ol>
@@ -272,7 +324,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
         <div class="card">
           <h2>Dónde vive la gente</h2>
           <p>WorldPop estima <b class="people-t" id="k-pop">n. d.</b> habitantes en el Perú en 2026, repartidos en celdas de 100 metros. En azul está la gente; en naranja, el fuego de los últimos 7 días.</p>
-          <p class="small">WorldPop es un modelo: reparte las proyecciones de población según las edificaciones que se ven desde el espacio. En zonas rurales muy dispersas puede equivocarse.</p>
+          <p class="small extra">WorldPop es un modelo: reparte las proyecciones de población según las edificaciones que se ven desde el espacio. En zonas rurales muy dispersas puede equivocarse.</p>
         </div>
       </article>
 
@@ -290,7 +342,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
       <article class="step" data-step="4">
         <div class="card">
           <h2>El radio cambia la respuesta</h2>
-          <p>No hay una distancia correcta: depende del viento, la pendiente y la vegetación. Por eso la cifra se calcula para cuatro radios.</p>
+          <p class="extra">No hay una distancia correcta: depende del viento, la pendiente y la vegetación. Por eso la cifra se calcula para cuatro radios.</p>
           <div class="seg" role="radiogroup" aria-label="Distancia al incendio" data-radius-group>
             <button type="button" role="radio" aria-checked="false" data-r="1">1 km</button>
             <button type="button" role="radio" aria-checked="false" data-r="2">2 km</button>
@@ -299,7 +351,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
           </div>
           <p>A <span id="r-km">5</span> km de un incendio activo viven <b class="people-t" id="r-people">n. d.</b> personas en <b id="r-districts">n. d.</b> distritos, y hay <b id="r-buildings">n. d.</b> edificaciones.</p>
           <svg class="chart" id="radius-chart" viewBox="0 0 320 132" role="img" aria-label="Personas expuestas según el radio"></svg>
-          <div class="key"><span><i class="k-bar"></i>WorldPop 2026</span><span><i class="k-dot"></i>Edificaciones × <span class="r-ppd">3,5</span> personas</span></div>
+          <div class="key extra"><span><i class="k-bar"></i>WorldPop 2026</span><span><i class="k-dot"></i>Edificaciones × <span class="r-ppd">3,5</span> personas</span></div>
           <p class="small">Si cada edificación de Google Open Buildings albergara <span class="r-ppd">3,5</span> personas, serían <b id="r-pfb">n. d.</b> (<span id="r-gap">n. d.</span> respecto de WorldPop). Las dos fuentes miden cosas distintas, así que la diferencia indica la incertidumbre.</p>
         </div>
       </article>
@@ -309,7 +361,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
           <h2>Las casas al borde del fuego</h2>
           <p>El incendio con más personas cerca está en el distrito de <b id="c-district">n. d.</b> (<span id="c-prov">n. d.</span>, <span id="c-dep">n. d.</span>). Empezó el <span id="c-first">n. d.</span> y su huella suma <b id="c-ha">n. d.</b> hectáreas.</p>
           <p>A menos de 1 km hay <b class="people-t" id="c-b1">n. d.</b> edificaciones y <b id="c-p1">n. d.</b> personas. La más cercana está a <b class="fire-t" id="c-near">n. d.</b> metros de un foco.</p>
-          <p class="small">Cada cuadrado naranja es un píxel VIIRS de 375 metros dibujado a tamaño real. El satélite sabe que hubo fuego en ese cuadrado, no en qué punto exacto.</p>
+          <p class="small extra">Cada cuadrado naranja es un píxel VIIRS de 375 metros dibujado a tamaño real. El satélite sabe que hubo fuego en ese cuadrado, no en qué punto exacto.</p>
         </div>
       </article>
 
@@ -317,11 +369,23 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
         <div class="card">
           <h2>Ahora te toca a ti</h2>
           <p>Abajo puedes buscar un distrito, recorrer los incendios por prioridad y ver cuántas personas y edificaciones hay a cada distancia.</p>
-          <p><a class="btn solid" href="#explorador">Ir al explorador</a></p>
+          <p class="actions"><a class="btn solid" href="#explorador">Ir al explorador</a><a class="btn" href="https://rodnm.github.io/mapa-incendios-peru-2026/" target="_blank" rel="noopener">Ver el monitor en vivo</a></p>
         </div>
       </article>
     </div>
   </section>
+
+  <div class="film" id="film" role="group" aria-label="Ver el relato como película" hidden>
+    <button class="film-play" id="film-play" type="button">
+      <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>
+      <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h3v11H4zM9 2.5h3v11H9z"/></svg>
+      <span class="film-label">Ver como película</span>
+    </button>
+    <button class="film-speed" id="film-speed" type="button" aria-label="Velocidad: 1×" hidden>1×</button>
+    <ol class="film-dots" id="film-dots" aria-label="Pasos del relato"></ol>
+    <span class="film-bar" aria-hidden="true"><i id="film-progress"></i></span>
+  </div>
+  <p class="sr" id="film-live" aria-live="polite"></p>
 
   <section class="section" id="explorador" aria-labelledby="ex-title">
     <div class="wrap">
@@ -368,6 +432,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
             <button type="button" class="wide" id="zoom-peru">Todo el Perú</button>
           </div>
           <div class="pick" id="pick" aria-live="polite" hidden></div>
+          <p class="map-hint" id="map-hint" hidden>Usa dos dedos para mover y acercar el mapa</p>
         </div>
       </div>
     </div>
@@ -451,6 +516,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
       <p class="foot-name">Rodrigo Norabuena</p>
       <p class="small">Trabajo del curso Python Intermedio, Diplomatura de Especialización en Ciencia de Datos para las Ciencias Sociales y la Gestión Pública 2026, Pontificia Universidad Católica del Perú (PUCP).</p>
       <p class="small">Código y datos: <a href="https://github.com/rodnm/mapa-incendios-peru-2026" target="_blank" rel="noopener">github.com/rodnm/mapa-incendios-peru-2026</a>. El código tiene licencia MIT; los textos, figuras y datos derivados, <a href="https://creativecommons.org/licenses/by/4.0/deed.es" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
+      <p class="small">Monitor en vivo, actualizado cada 3 horas: <a href="https://rodnm.github.io/mapa-incendios-peru-2026/" target="_blank" rel="noopener">rodnm.github.io/mapa-incendios-peru-2026</a>.</p>
       <div class="cite-box">
         <h2 class="foot-h">Cómo citar este trabajo</h2>
         <p id="cite-text">Norabuena, R. (2026). <i>¿A quién alcanza el fuego? Incendios en el Perú al 21 de octubre de 2026</i> [Software y conjunto de datos]. GitHub. https://github.com/rodnm/mapa-incendios-peru-2026</p>
@@ -475,6 +541,8 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
         <dd><a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> de Mapzen en AWS (SRTM, GMTED2010 y ETOPO1).</dd>
         <dt>Mapa</dt>
         <dd>deck.gl (MIT) y topojson-client (ISC).</dd>
+        <dt>Modo película</dt>
+        <dd>Idea inspirada en <a href="https://margarethamilton.dev/" target="_blank" rel="noopener">margarethamilton.dev</a>, de midudev (MIT).</dd>
       </dl>
       <p class="small">Herramienta independiente hecha con datos abiertos. No reemplaza los reportes del COEN, INDECI, SERFOR ni SERNANP.</p>
     </div>
@@ -490,6 +558,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COARSE = matchMedia('(pointer: coarse)').matches;
   const PERU = [-81.4, -18.4, -68.6, 0.0];
   const HOUR = 3600e3;
 
@@ -804,7 +873,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
   ];
 
   const story = { step: -1, op: ops({}), target: ops({}), radius: 5, units: 'pixels', emberRange: [0, 1], flameRange: [0, 1], flameSoft: null, view: null };
-  const replay = { T: 0, playing: false, last: 0, dur: 22000, played: false };
+  const replay = { T: 0, playing: false, last: 0, dur: 22000, played: false, rate: 1 };
   let storyDeck = null, exploreDeck = null;
 
   function setTimeMode(S, mode) {
@@ -856,7 +925,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     if (replay.playing) {
       const dt = replay.last ? now - replay.last : 16;
       replay.last = now;
-      replay.T = Math.min(A.cutH, replay.T + A.cutH * dt / replay.dur);
+      replay.T = Math.min(A.cutH, replay.T + A.cutH * dt * replay.rate / replay.dur);
       if (replay.T >= A.cutH) { replay.playing = false; replay.played = true; updateReplayButton(); }
       if (story.mode === 'replay') setTimeMode(story, 'replay');
       updateHUD();
@@ -1115,6 +1184,161 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     });
   }
 
+  // ---------- "Ver como película" ----------
+  // Pause-and-glide autoplay, inspired by the "Ver como película" button of margarethamilton.dev
+  // (midudev, MIT). Each step holds still for its reading time, then the page glides to the next one.
+  // As in the original, a wheel, a touch, a scroll key or a tab switch pauses it, and a drift check
+  // catches any other way the page moves. Unlike it, touches on the player itself never pause it.
+  const SPEEDS = [1, 2, 0.5];
+  const SPEED_LABELS = ['1×', '2×', '0,5×'];
+  const GLIDE_MS = 1300, WORDS_PER_SEC = 3.3;
+  const STOP_KEYS = new Set(['Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+  const film = { playing: false, started: false, ended: false, speedIdx: 0, phase: 'idle', step: 0, p: 0, g: 0, y: 0, fromY: 0, toY: 0, dwellBase: 0, last: 0, raf: 0, radiusIdx: -1 };
+  let stepEls = [], filmEl = null;
+  const speed = () => SPEEDS[film.speedIdx];
+  const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const stepTop = i => Math.round(stepEls[i].getBoundingClientRect().top + scrollY);
+  const stepTitle = i => { const h = stepEls[i].querySelector('h1, h2'); return h ? h.textContent.trim() : ''; };
+
+  // Dwell at 1×: reading time of the visible card text plus the map flight, with floors for the steps
+  // that animate on their own (the season replay and the radius sweep).
+  function dwellFor(i) {
+    const words = (stepEls[i].querySelector('.card').innerText || '').split(/\s+/).filter(Boolean).length;
+    let ms = words / WORDS_PER_SEC * 1000 + 1800;
+    if (i === 0) ms = Math.max(ms, replay.dur + 1500);
+    if (i === 4) ms = Math.max(ms, 4 * 2800);
+    return clamp(ms, 6000, 26000);
+  }
+
+  function filmLabel() {
+    const text = film.playing ? 'Pausar' : film.ended ? 'Volver a ver' : film.started ? 'Continuar' : 'Ver como película';
+    $('.film-label', filmEl).textContent = text;
+    filmEl.classList.toggle('is-playing', film.playing);
+    $('#film-speed').hidden = !film.started || film.ended;
+  }
+  function filmProgress() {
+    const n = stepEls.length;
+    if (film.ended) { $('#film-progress').style.width = '100%'; return; }
+    const idx = film.started ? film.step : Math.max(0, story.step);
+    const frac = film.started && film.phase === 'dwell' ? film.p : 0;
+    $('#film-progress').style.width = `${clamp((idx + frac) / n * 100, 0, 100)}%`;
+  }
+  function syncDots(i) {
+    $$('#film-dots button').forEach((b, k) => { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+  }
+
+  function startDwell() {
+    film.phase = 'dwell'; film.p = 0; film.dwellBase = dwellFor(film.step);
+    set('film-live', `Paso ${film.step + 1} de ${stepEls.length}: ${stepTitle(film.step)}`);
+    if (film.step === 0 && A.hot) { replay.rate = speed(); startReplay(true); }
+    if (film.step === 4) { film.radiusIdx = 0; setRadius(1); }
+  }
+  function beginGlide(i) {
+    // Leaving the radius step restores the 5 km default the rest of the page uses.
+    if (film.step === 4 && i !== 4 && film.radiusIdx >= 0) { film.radiusIdx = -1; setRadius(5); }
+    film.step = i; film.fromY = scrollY; film.toY = stepTop(i); film.g = 0;
+    if (REDUCED || Math.abs(film.toY - film.fromY) < 4) {
+      scrollTo(0, film.toY); film.y = film.toY; startDwell();
+    } else {
+      film.phase = 'glide'; film.y = film.fromY;
+    }
+  }
+  function filmFrame(now) {
+    if (!film.playing) return;
+    const dt = Math.min(now - film.last, 100); // a background tab must not jump ahead
+    film.last = now;
+    if (Math.abs(scrollY - film.y) > 3) { pauseFilm(); return; }
+    if (film.phase === 'glide') {
+      film.g = Math.min(1, film.g + dt * speed() / GLIDE_MS);
+      film.y = film.fromY + (film.toY - film.fromY) * easeInOut(film.g);
+      scrollTo(0, film.y);
+      if (film.g >= 1) startDwell();
+    } else if (film.phase === 'dwell') {
+      film.p = Math.min(1, film.p + dt * speed() / film.dwellBase);
+      if (film.step === 4) {
+        const k = Math.min(3, Math.floor(film.p * 4));
+        if (k !== film.radiusIdx) { film.radiusIdx = k; setRadius([1, 2, 5, 10][k]); }
+      }
+      if (film.p >= 1) {
+        if (film.step >= stepEls.length - 1) { endFilm(); return; }
+        beginGlide(film.step + 1);
+      }
+    }
+    filmProgress();
+    film.raf = requestAnimationFrame(filmFrame);
+  }
+
+  function playFilm() {
+    const fromEnd = film.ended;
+    film.ended = false; film.started = true; film.playing = true;
+    film.last = performance.now();
+    if (fromEnd) { scrollTo(0, stepTop(0)); film.step = 0; film.phase = 'idle'; }
+    film.y = scrollY;
+    const cur = fromEnd ? 0 : Math.max(0, story.step);
+    const resume = film.phase === 'dwell' && film.step === cur && Math.abs(scrollY - stepTop(cur)) < 4;
+    if (resume) {
+      if (cur === 0 && replay.T < A.cutH && A.hot) { replay.rate = speed(); replay.playing = true; replay.last = 0; updateReplayButton(); kick(); }
+    } else {
+      beginGlide(cur);
+    }
+    filmLabel();
+    film.raf = requestAnimationFrame(filmFrame);
+  }
+  function pauseFilm() {
+    if (!film.playing) return;
+    film.playing = false;
+    cancelAnimationFrame(film.raf);
+    if (film.step === 0 && replay.playing) { replay.playing = false; updateReplayButton(); }
+    filmLabel(); filmProgress();
+  }
+  function endFilm() {
+    film.playing = false; film.ended = true;
+    cancelAnimationFrame(film.raf);
+    filmLabel(); filmProgress();
+    set('film-live', 'Fin del relato. Más abajo están el explorador y la tabla de distritos.');
+  }
+  function cycleSpeed() {
+    film.speedIdx = (film.speedIdx + 1) % SPEEDS.length;
+    const b = $('#film-speed'), label = SPEED_LABELS[film.speedIdx];
+    b.textContent = label; b.setAttribute('aria-label', `Velocidad: ${label}`);
+    if (replay.playing && film.playing) replay.rate = speed();
+  }
+
+  function wireFilm() {
+    filmEl = $('#film');
+    $('#film-dots').innerHTML = stepEls.map((s, i) => `<li><button type="button" data-go="${i}" aria-label="Ir al paso ${i + 1} de ${stepEls.length}: ${esc(stepTitle(i))}"><i></i></button></li>`).join('');
+    $$('#film-dots button').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.go;
+      if (film.playing) { beginGlide(i); return; }
+      film.ended = false; filmLabel();
+      scrollTo({ top: stepTop(i), behavior: REDUCED ? 'auto' : 'smooth' });
+    }));
+    $('#film-play').addEventListener('click', () => { if (film.playing) pauseFilm(); else playFilm(); });
+    $('#film-speed').addEventListener('click', cycleSpeed);
+    const inFilm = e => filmEl.contains(e.target);
+    addEventListener('wheel', () => pauseFilm(), { passive: true });
+    addEventListener('touchstart', e => { if (!inFilm(e)) pauseFilm(); }, { passive: true });
+    addEventListener('keydown', e => { if (film.playing && !inFilm(e) && STOP_KEYS.has(e.key)) pauseFilm(); });
+    // Reaching for a control inside a card (radius, links) means the reader wants to take over.
+    addEventListener('pointerdown', e => { if (film.playing && e.target.closest && e.target.closest('.card button, .card a, .card .chart')) pauseFilm(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) pauseFilm(); });
+    filmLabel();
+  }
+
+  function wireMore() {
+    $$('.step .card').forEach(card => {
+      if (!$('.extra', card)) return;
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn more'; b.textContent = 'Ver detalle'; b.setAttribute('aria-expanded', 'false');
+      b.addEventListener('click', () => {
+        const open = card.classList.toggle('open');
+        b.textContent = open ? 'Ocultar detalle' : 'Ver detalle';
+        b.setAttribute('aria-expanded', String(open));
+      });
+      card.appendChild(b);
+    });
+  }
+
   // ---------- Boot ----------
   async function boot() {
     const { D, missing } = await load();
@@ -1153,7 +1377,12 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     exploreDeck = new deck.Deck({
       parent: exEl,
       initialViewState: exploreView,
-      controller: { scrollZoom: false, dragRotate: false, touchRotate: false, doubleClickZoom: true, keyboard: true },
+      // On touch screens one finger scrolls the page and two fingers move and zoom the map, so the map
+      // never traps the reader's scroll. Mouse users keep drag to pan.
+      controller: COARSE
+        ? { dragPan: false, scrollZoom: false, dragRotate: false, touchRotate: false, touchZoom: true, doubleClickZoom: true, keyboard: true }
+        : { scrollZoom: false, dragRotate: false, touchRotate: false, doubleClickZoom: true, keyboard: true },
+      touchAction: COARSE ? 'pan-y' : 'none',
       getTooltip: tooltip,
       onClick: info => {
         if (!info.object || !info.layer) return;
@@ -1173,23 +1402,43 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     buildExplorerPanel();
     buildTable();
     wireCopy();
+    wireMore();
+    if (COARSE) {
+      let hintAt = 0, hintTimer = 0;
+      exEl.addEventListener('touchmove', e => {
+        if (e.touches.length !== 1 || Date.now() - hintAt < 4000) return;
+        hintAt = Date.now();
+        const h = $('#map-hint');
+        h.hidden = false; clearTimeout(hintTimer);
+        hintTimer = setTimeout(() => { h.hidden = true; }, 1600);
+      }, { passive: true });
+    }
 
     $$('[data-radius-group] button').forEach(b => b.addEventListener('click', () => setRadius(+b.dataset.r)));
     $('#replay').addEventListener('click', () => {
       if (replay.playing) { replay.playing = false; updateReplayButton(); return; }
       if (story.step !== 0) $('.step[data-step="0"]').scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' });
+      replay.rate = 1;
       startReplay(replay.T >= A.cutH);
     });
 
     setRadius(5);
     // The active step is the last one whose top has crossed the middle of the screen. Measuring on every
     // scroll and resize stays correct when the host frame resizes the page after load.
-    const stepEls = $$('.step');
+    stepEls = $$('.step');
+    const scrollyEl = $('#historia');
+    wireFilm();
     const syncStep = () => {
       const mid = innerHeight / 2;
       let idx = 0;
       for (const s of stepEls) if (s.getBoundingClientRect().top <= mid) idx = +s.dataset.step;
       setStep(idx);
+      syncDots(idx);
+      // The player only shows while the story is on screen.
+      const r = scrollyEl.getBoundingClientRect();
+      const inStory = r.top < mid && r.bottom > mid;
+      if (filmEl.hidden === inStory) filmEl.hidden = !inStory;
+      if (!film.playing) filmProgress();
     };
     let ticking = false;
     addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; syncStep(); }); } }, { passive: true });
