@@ -1,0 +1,17 @@
+[
+ {
+  "titulo": "El radio cambia la respuesta",
+  "texto": "Al corte (2026-10-21 20:52, hora de Lima) había 122 incendios activos de vegetación. A 5 km de sus focos de las últimas 48 h viven unas 206.740 personas (WorldPop 2026). Con 1 km la cifra baja a 5.838 y con 10 km sube a 938.478: el radio elegido multiplica el resultado por 161. Aparte quedan 32 incendios marcados como urbanos o de fuente fija, que habrían sumado 187.759 personas más.",
+  "cifra": "206.740 personas a 5 km (rango 5.838–938.478)"
+ },
+ {
+  "titulo": "Nauta concentra la exposición",
+  "texto": "El distrito de Nauta (Loreto, Loreto) reúne 28.841 personas a 5 km de un incendio activo, el 14 % del total nacional. Los 10 primeros distritos suman el 68 %.",
+  "cifra": "14 % del total en un distrito"
+ },
+ {
+  "titulo": "Dos fuentes que no coinciden del todo",
+  "texto": "Open Buildings cuenta 118.358 edificaciones a 5 km. Con 3,5 personas por vivienda (Censo 2017, cifra de referencia) serían 414.253 personas, frente a 206.740 de WorldPop (1,7 personas por edificación): no toda edificación es una vivienda. En el caso de estudio (Puerto Bermudez, Pasco) la edificación más cercana está a 484 m de un foco.",
+  "cifra": "414.253 frente a 206.740"
+ }
+]
