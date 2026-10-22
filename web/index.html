@@ -1,0 +1,1161 @@
+<title>¿A quién alcanza el fuego?</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Incendios en el Perú al 21 de octubre de 2026: focos VIIRS de NASA FIRMS cruzados con WorldPop 2026 y Google Open Buildings, por distrito.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=Schibsted+Grotesk:wght@400..800&display=swap">
+<style>
+/* Layout: a full-bleed night map stays pinned while story cards scroll over its left side (bottom on phones);
+   after the story comes a framed explorer, a sortable district table and the method, in one reading column. */
+:root {
+  --paper: #eef0f3;
+  --paper-2: #e2e6ec;
+  --ink: #141a26;
+  --ink-2: #5a6474;
+  --rule: #cfd5de;
+  --fire-ink: #a8430c;
+  --people-ink: #1a5f8c;
+  --fire-mark: #c4500f;
+  --people-mark: #1f6fa3;
+  --card: rgba(238, 240, 243, 0.94);
+  --card-line: rgba(20, 26, 38, 0.12);
+  --focus: #1a5f8c;
+  /* The map is always a night pass: these do not change with the theme. */
+  --night: #070b14;
+  --night-ink: #c9d2df;
+  --night-muted: #8b96a8;
+  --night-line: rgba(201, 210, 223, 0.16);
+  --fire: #e5661c;
+  --people: #2f97cf;
+  --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans: "Schibsted Grotesk", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --gutter-l: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0c111c; --paper-2: #121a28; --ink: #e9edf3; --ink-2: #98a3b3; --rule: #263042;
+    --fire-ink: #f08a4b; --people-ink: #6dbbe6; --fire-mark: #e5661c; --people-mark: #2f97cf;
+    --card: rgba(12, 17, 28, 0.88); --card-line: rgba(201, 210, 223, 0.14); --focus: #6dbbe6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0c111c; --paper-2: #121a28; --ink: #e9edf3; --ink-2: #98a3b3; --rule: #263042;
+  --fire-ink: #f08a4b; --people-ink: #6dbbe6; --fire-mark: #e5661c; --people-mark: #2f97cf;
+  --card: rgba(12, 17, 28, 0.88); --card-line: rgba(201, 210, 223, 0.14); --focus: #6dbbe6;
+  color-scheme: dark;
+}
+
+body { background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 1rem; line-height: 1.55; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 450; line-height: 1.08; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: var(--people-ink); text-underline-offset: 0.18em; }
+b, strong { font-weight: 700; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+.num, b { font-variant-numeric: tabular-nums; }
+.fire-t { color: var(--fire-ink); }
+.people-t { color: var(--people-ink); }
+.small { font-size: 0.875rem; color: var(--ink-2); line-height: 1.5; }
+
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: var(--gutter-l); top: -3rem; z-index: 20; background: var(--paper); color: var(--ink); padding: 0.5rem 0.75rem; border-radius: 4px; }
+.skip:focus { top: calc(8px + env(safe-area-inset-top, 0px)); }
+
+/* Story */
+.scrolly { position: relative; }
+.stage { position: sticky; top: 0; height: 100vh; height: 100svh; background: var(--night); overflow: hidden; }
+.map { position: absolute; inset: 0; }
+.steps { position: relative; z-index: 2; margin-top: -100vh; margin-top: -100svh; pointer-events: none; }
+.step { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; padding-left: var(--gutter-l); padding-right: var(--gutter-r); padding-block: 10vh; box-sizing: border-box; }
+.step:first-child { align-items: flex-start; padding-block: 7vh 10vh; }
+.card { pointer-events: auto; width: min(27rem, 100%); box-sizing: border-box; background: var(--card); border: 1px solid var(--card-line); border-radius: 6px; padding: 1.25rem 1.375rem 1.375rem; display: grid; gap: 0.8rem; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.card h2 { font-size: 1.75rem; }
+.card.hero { width: min(33rem, 100%); gap: 1rem; padding: 1.5rem 1.5rem 1.375rem; }
+.hero h1 { font-size: clamp(2.6rem, 5.4vw, 4.25rem); font-weight: 380; letter-spacing: -0.02em; line-height: 0.98; }
+.lede { font-size: 1.0625rem; }
+.hud { display: grid; gap: 0.5rem; border-top: 1px solid var(--rule); padding-top: 0.875rem; }
+.hud-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.hud-date { font-family: var(--serif); font-size: 1.625rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.hud-count { font-size: 0.9375rem; color: var(--ink-2); }
+.hud-count b { color: var(--fire-ink); font-size: 1.125rem; }
+#spark { width: 100%; height: 56px; display: block; touch-action: none; }
+.spark-area { fill: var(--fire-mark); opacity: 0.18; }
+.spark-line { fill: none; stroke: var(--fire-mark); stroke-width: 1.5; }
+.spark-cursor { stroke: var(--ink); stroke-width: 1; }
+.spark-grid { stroke: var(--rule); stroke-width: 1; }
+.hud-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.btn { font: 600 0.9375rem/1 var(--sans); color: var(--ink); background: transparent; border: 1px solid var(--ink-2); border-radius: 999px; padding: 0.55rem 0.95rem; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; }
+.btn:hover { background: var(--paper-2); }
+.btn.solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.solid:hover { opacity: 0.9; }
+.list { margin: 0; padding-left: 1.15rem; display: grid; gap: 0.3rem; font-size: 0.9375rem; }
+.list li::marker { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* Radius control and chart */
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; padding: 3px; gap: 2px; background: var(--paper); }
+.seg button { font: 600 0.875rem/1 var(--sans); color: var(--ink-2); background: transparent; border: 0; border-radius: 999px; padding: 0.5rem 0.8rem; cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { fill: var(--ink-2); font: 500 12px var(--sans); font-variant-numeric: tabular-nums; }
+.chart .sel text { fill: var(--ink); font-weight: 700; }
+.chart .bar { fill: var(--people-mark); }
+.chart .dot { fill: var(--paper); stroke: var(--people-mark); stroke-width: 2; }
+.chart .row { cursor: pointer; }
+.chart .row:not(.sel) { opacity: 0.5; }
+.key { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; font-size: 0.8125rem; color: var(--ink-2); }
+.key span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.key .k-bar { width: 16px; height: 6px; border-radius: 3px; background: var(--people-mark); }
+.key .k-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--people-mark); box-sizing: border-box; }
+
+/* Map overlays (always on the night surface) */
+.legend { position: absolute; z-index: 3; right: calc(var(--gutter-r) + 4px); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 15rem; box-sizing: border-box; color: var(--night-ink); background: rgba(7, 11, 20, 0.74); border: 1px solid var(--night-line); border-radius: 6px; padding: 0.75rem 0.875rem; font-size: 0.8125rem; line-height: 1.4; display: grid; gap: 0.6rem; }
+.legend h3 { font-family: var(--sans); font-size: 0.8125rem; font-weight: 700; color: var(--night-ink); }
+.legend .muted { color: var(--night-muted); }
+.ramp { height: 8px; border-radius: 4px; }
+.ticks { position: relative; height: 1.1rem; font-size: 0.75rem; color: var(--night-muted); font-variant-numeric: tabular-nums; }
+.ticks span { position: absolute; top: 0.15rem; transform: translateX(-50%); white-space: nowrap; }
+.lg-row { display: flex; align-items: center; gap: 0.5rem; }
+.sw { width: 12px; height: 12px; border-radius: 2px; flex: none; }
+.sw.ring { border-radius: 50%; border: 1.5px solid #ffe2c4; box-sizing: border-box; }
+.sw.px { background: rgba(229, 102, 28, 0.6); border: 1px solid #ffc896; box-sizing: border-box; border-radius: 0; }
+.biv { display: grid; grid-template-columns: auto auto; gap: 0.4rem; align-items: end; }
+.biv-grid { display: grid; grid-template-columns: repeat(3, 22px); grid-template-rows: repeat(3, 22px); gap: 2px; }
+.biv-y { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 0.75rem; color: var(--night-muted); justify-self: end; }
+.biv-x { grid-column: 2; font-size: 0.75rem; color: var(--night-muted); }
+.scale { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--night-muted); font-variant-numeric: tabular-nums; }
+.scale i { display: block; height: 4px; border: 1px solid var(--night-ink); border-top: 0; box-sizing: border-box; }
+.attrib { position: absolute; z-index: 3; left: var(--gutter-l); bottom: calc(6px + env(safe-area-inset-bottom, 0px)); font-size: 0.6875rem; color: var(--night-muted); pointer-events: none; }
+.notice { position: absolute; z-index: 4; inset: auto var(--gutter-r) auto var(--gutter-l); top: calc(12px + env(safe-area-inset-top, 0px)); color: var(--night-ink); background: rgba(7, 11, 20, 0.9); border: 1px solid var(--night-line); border-radius: 6px; padding: 0.6rem 0.8rem; font-size: 0.875rem; }
+
+@media (max-width: 759px) {
+  .step { align-items: flex-end; padding-block: 8vh 5vh; }
+  .step:first-child { align-items: flex-end; }
+  .card, .card.hero { width: 100%; }
+  .card { padding: 1rem 1.05rem 1.1rem; gap: 0.6rem; font-size: 0.9375rem; }
+  .card h2 { font-size: 1.45rem; }
+  .card.hero { padding: 1.1rem 1.1rem 1rem; gap: 0.7rem; }
+  .hero h1 { font-size: 2.15rem; }
+  .lede { font-size: 0.9375rem; }
+  #spark { height: 40px; }
+  .legend { top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; width: 10.5rem; padding: 0.5rem 0.6rem; font-size: 0.6875rem; gap: 0.4rem; }
+  .legend h3 { font-size: 0.6875rem; }
+  .biv-grid { grid-template-columns: repeat(3, 15px); grid-template-rows: repeat(3, 15px); }
+  .biv-grid .sw { width: 15px !important; height: 15px !important; }
+  .stage[data-step="0"] .legend { display: none; }
+  .attrib { display: none; }
+}
+
+/* Sections after the story */
+.section { padding-block: 4.5rem 3rem; padding-left: var(--gutter-l); padding-right: var(--gutter-r); border-top: 1px solid var(--rule); }
+.wrap { max-width: 74rem; margin-inline: auto; display: grid; gap: 1.25rem; }
+.wrap > * { min-width: 0; }
+.section h2 { font-size: clamp(2rem, 4vw, 2.75rem); }
+.prose { max-width: 40rem; display: grid; gap: 0.9rem; }
+.prose h3 { font-size: 1.375rem; margin-top: 1rem; }
+.prose ul { margin: 0; padding-left: 1.15rem; display: grid; gap: 0.35rem; }
+
+.explorer { display: grid; grid-template-columns: 21rem minmax(0, 1fr); gap: 1rem; align-items: start; }
+.panel { display: grid; gap: 1.25rem; min-width: 0; }
+.panel fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 0.45rem; }
+.panel legend, .panel label.lbl { font-weight: 700; font-size: 0.9375rem; padding: 0; margin-bottom: 0.2rem; }
+.check { display: flex; align-items: center; gap: 0.55rem; font-size: 0.9375rem; cursor: pointer; }
+.check input { width: 1rem; height: 1rem; accent-color: var(--ink); margin: 0; }
+.check .sw { border-radius: 2px; }
+.field { font: 500 1rem var(--sans); color: var(--ink); background: var(--paper); border: 1px solid var(--ink-2); border-radius: 6px; padding: 0.6rem 0.7rem; width: 100%; box-sizing: border-box; }
+.fires { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 22rem; overflow-y: auto; border-top: 1px solid var(--rule); }
+.fires button { width: 100%; text-align: left; font: inherit; color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--rule); padding: 0.6rem 0.25rem; cursor: pointer; display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); column-gap: 0.6rem; row-gap: 0.2rem; }
+.fires button:hover { background: var(--paper-2); }
+.fires .prio { grid-row: span 2; font-family: var(--serif); font-size: 1.5rem; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--fire-ink); line-height: 1; padding-top: 0.15rem; }
+.fires .fl-name { font-weight: 700; font-size: 0.9375rem; }
+.fires .fl-meta { font-size: 0.8125rem; color: var(--ink-2); }
+.fires .pbar { grid-column: 2; height: 4px; border-radius: 2px; background: var(--rule); }
+.fires .pbar i { display: block; height: 100%; border-radius: 2px; background: var(--fire-mark); }
+.map-frame { position: relative; height: 74vh; min-height: 34rem; border-radius: 6px; overflow: hidden; background: var(--night); }
+.zoom { position: absolute; z-index: 3; top: 12px; left: 12px; display: grid; gap: 4px; }
+.zoom button { width: 36px; height: 36px; font: 600 1.125rem/1 var(--sans); color: var(--night-ink); background: rgba(7, 11, 20, 0.82); border: 1px solid var(--night-line); border-radius: 6px; cursor: pointer; }
+.zoom button.wide { width: auto; padding: 0 0.6rem; font-size: 0.8125rem; }
+.pick { position: absolute; z-index: 3; left: 12px; right: 12px; bottom: 12px; max-width: 22rem; color: var(--night-ink); background: rgba(7, 11, 20, 0.9); border: 1px solid var(--night-line); border-radius: 6px; padding: 0.75rem 0.875rem; font-size: 0.875rem; display: grid; gap: 0.4rem; }
+.pick h3 { font-family: var(--serif); font-size: 1.25rem; color: #e9edf3; }
+.pick dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 0.2rem 1rem; }
+.pick dt { color: var(--night-muted); }
+.pick dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.pick .close { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; color: var(--night-ink); background: transparent; border: 0; cursor: pointer; font-size: 1.125rem; }
+@media (max-width: 919px) {
+  .explorer { grid-template-columns: minmax(0, 1fr); }
+  .map-frame { order: -1; height: 62svh; min-height: 22rem; }
+}
+
+.table-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; }
+.table-wrap { position: relative; overflow-x: auto; border-top: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+th, td { padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+th:nth-child(-n+3), td:nth-child(-n+3) { text-align: left; }
+th { font-weight: 700; font-size: 0.8125rem; color: var(--ink-2); vertical-align: bottom; }
+th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+th[aria-sort="descending"] button::after { content: " ▾"; }
+th[aria-sort="ascending"] button::after { content: " ▴"; }
+td .go { font: 600 0.8125rem var(--sans); color: var(--people-ink); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 0.18em; }
+textarea.csv { width: 100%; min-height: 9rem; box-sizing: border-box; font: 0.8125rem/1.4 ui-monospace, Consolas, monospace; color: var(--ink); background: var(--paper-2); border: 1px solid var(--rule); border-radius: 6px; padding: 0.6rem; }
+
+.formula { font-family: var(--serif); font-size: 1.125rem; background: var(--paper-2); border-radius: 6px; padding: 0.8rem 1rem; overflow-x: auto; }
+footer { padding-block: 2rem 3rem; padding-left: var(--gutter-l); padding-right: var(--gutter-r); border-top: 1px solid var(--rule); }
+footer .wrap { gap: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+}
+</style>
+
+<a class="skip" href="#explorador">Ir al explorador</a>
+
+<main>
+  <section class="scrolly" id="historia" aria-label="Relato">
+    <div class="stage">
+      <div class="map" id="map-story" role="img" aria-label="Mapa del Perú con los focos de calor de la temporada 2026"></div>
+      <div class="legend" id="legend" aria-live="polite"></div>
+      <p class="attrib">Focos: NASA FIRMS. Población: WorldPop. Edificaciones: Google Open Buildings. Relieve: AWS Terrain Tiles.</p>
+      <div class="notice" id="notice" hidden></div>
+    </div>
+
+    <div class="steps">
+      <article class="step" data-step="0">
+        <div class="card hero">
+          <h1>¿A quién alcanza el fuego?</h1>
+          <p class="lede">Entre el 1 de julio y el <span id="k-cut-day">21 de octubre</span>, los satélites VIIRS detectaron <b class="fire-t" id="k-season">miles de</b> focos de calor en el Perú. Este relato cruza ese fuego con dónde vive la gente y dónde están sus casas.</p>
+          <div class="hud">
+            <div class="hud-row">
+              <span class="hud-date" id="hud-date">1 de julio</span>
+              <span class="hud-count"><b id="hud-count">0</b> focos acumulados</span>
+            </div>
+            <svg id="spark" viewBox="0 0 320 56" preserveAspectRatio="none" role="img" aria-label="Focos de calor por día desde el 1 de julio"></svg>
+            <div class="hud-actions">
+              <span class="small" id="spark-read">Focos por día</span>
+              <button class="btn" id="replay" type="button">Reproducir la temporada</button>
+            </div>
+          </div>
+          <p class="small">Datos al <span id="k-cutoff">21 de octubre de 2026</span>, hora de Lima. Satélites S-NPP, NOAA-20 y NOAA-21.</p>
+        </div>
+      </article>
+
+      <article class="step" data-step="1">
+        <div class="card">
+          <h2>El fuego de hoy</h2>
+          <p>En las 24 horas previas al corte hubo <b class="fire-t" id="k-24h">n. d.</b> focos, y <b id="k-7d">n. d.</b> en los últimos 7 días. Al unir los focos que están a menos de 1 km y 48 horas entre sí, quedan <b id="k-fires">n. d.</b> incendios activos; <b id="k-big">n. d.</b> tienen una huella mayor a 100 hectáreas.</p>
+          <p class="small">Cada anillo es un incendio activo y su tamaño muestra la huella: los píxeles de 375 m donde se detectó fuego. La huella no es el área quemada oficial.</p>
+          <p class="small" id="k-urban" hidden></p>
+          <div>
+            <p class="small">Los de mayor prioridad:</p>
+            <ol class="list" id="top-fires"></ol>
+          </div>
+        </div>
+      </article>
+
+      <article class="step" data-step="2">
+        <div class="card">
+          <h2>Dónde vive la gente</h2>
+          <p>WorldPop estima <b class="people-t" id="k-pop">n. d.</b> habitantes en el Perú en 2026, repartidos en celdas de 100 metros. En azul está la gente; en naranja, el fuego de los últimos 7 días.</p>
+          <p class="small">WorldPop es un modelo: reparte las proyecciones de población según las edificaciones que se ven desde el espacio. En zonas rurales muy dispersas puede equivocarse.</p>
+        </div>
+      </article>
+
+      <article class="step" data-step="3">
+        <div class="card">
+          <h2>Donde se cruzan</h2>
+          <p>Cada distrito tiene dos valores: cuántos focos tuvo en 7 días y cuántas personas viven a menos de 5 km de un incendio activo. Los colores se suman como la luz. El naranja es fuego, el azul es gente, y donde los dos son altos el distrito se vuelve blanco.</p>
+          <div>
+            <p class="small">Distritos con más personas a menos de 5 km:</p>
+            <ol class="list" id="top-districts"></ol>
+          </div>
+        </div>
+      </article>
+
+      <article class="step" data-step="4">
+        <div class="card">
+          <h2>El radio cambia la respuesta</h2>
+          <p>No hay una distancia correcta: depende del viento, la pendiente y la vegetación. Por eso la cifra se calcula para cuatro radios.</p>
+          <div class="seg" role="radiogroup" aria-label="Distancia al incendio" data-radius-group>
+            <button type="button" role="radio" aria-checked="false" data-r="1">1 km</button>
+            <button type="button" role="radio" aria-checked="false" data-r="2">2 km</button>
+            <button type="button" role="radio" aria-checked="true" data-r="5">5 km</button>
+            <button type="button" role="radio" aria-checked="false" data-r="10">10 km</button>
+          </div>
+          <p>A <span id="r-km">5</span> km de un incendio activo viven <b class="people-t" id="r-people">n. d.</b> personas en <b id="r-districts">n. d.</b> distritos, y hay <b id="r-buildings">n. d.</b> edificaciones.</p>
+          <svg class="chart" id="radius-chart" viewBox="0 0 320 132" role="img" aria-label="Personas expuestas según el radio"></svg>
+          <div class="key"><span><i class="k-bar"></i>WorldPop 2026</span><span><i class="k-dot"></i>Edificaciones × <span class="r-ppd">3,5</span> personas</span></div>
+          <p class="small">Si cada edificación de Google Open Buildings albergara <span class="r-ppd">3,5</span> personas, serían <b id="r-pfb">n. d.</b> (<span id="r-gap">n. d.</span> respecto de WorldPop). Las dos fuentes miden cosas distintas, así que la diferencia indica la incertidumbre.</p>
+        </div>
+      </article>
+
+      <article class="step" data-step="5">
+        <div class="card">
+          <h2>Las casas al borde del fuego</h2>
+          <p>El incendio con más personas cerca está en el distrito de <b id="c-district">n. d.</b> (<span id="c-prov">n. d.</span>, <span id="c-dep">n. d.</span>). Empezó el <span id="c-first">n. d.</span> y su huella suma <b id="c-ha">n. d.</b> hectáreas.</p>
+          <p>A menos de 1 km hay <b class="people-t" id="c-b1">n. d.</b> edificaciones y <b id="c-p1">n. d.</b> personas. La más cercana está a <b class="fire-t" id="c-near">n. d.</b> metros de un foco.</p>
+          <p class="small">Cada cuadrado naranja es un píxel VIIRS de 375 metros dibujado a tamaño real. El satélite sabe que hubo fuego en ese cuadrado, no en qué punto exacto.</p>
+        </div>
+      </article>
+
+      <article class="step" data-step="6">
+        <div class="card">
+          <h2>Ahora te toca a ti</h2>
+          <p>Abajo puedes buscar un distrito, recorrer los incendios por prioridad y ver cuántas personas y edificaciones hay a cada distancia.</p>
+          <p><a class="btn solid" href="#explorador">Ir al explorador</a></p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="explorador" aria-labelledby="ex-title">
+    <div class="wrap">
+      <div class="prose">
+        <h2 id="ex-title">Explora el mapa</h2>
+        <p>Haz clic en un incendio o en un distrito para ver sus cifras. Para acercarte, usa los botones + y − o pellizca la pantalla.</p>
+      </div>
+      <div class="explorer">
+        <div class="panel">
+          <div>
+            <label class="lbl" for="district-q">Buscar un distrito</label>
+            <input class="field" id="district-q" list="district-list" placeholder="Por ejemplo, Abancay" autocomplete="off">
+            <datalist id="district-list"></datalist>
+          </div>
+          <fieldset>
+            <legend>Capas</legend>
+            <label class="check"><input type="checkbox" id="ly-flames" data-layer="flames" checked><i class="sw" style="background:#ffb03b"></i>Focos de las últimas 24 horas</label>
+            <label class="check"><input type="checkbox" id="ly-embers" data-layer="embers" checked><i class="sw" style="background:#7a2a14"></i>Focos de los últimos 7 días</label>
+            <label class="check"><input type="checkbox" id="ly-fires" data-layer="fires" checked><i class="sw ring" style="border-color:var(--ink-2)"></i>Incendios activos</label>
+            <label class="check"><input type="checkbox" id="ly-buffers" data-layer="buffers"><i class="sw" style="background:rgba(47,151,207,.35);border:1px solid var(--people-mark);box-sizing:border-box"></i>Zona de exposición</label>
+            <label class="check"><input type="checkbox" id="ly-pop" data-layer="pop"><i class="sw" style="background:var(--people-mark)"></i>Población (WorldPop 2026)</label>
+            <label class="check"><input type="checkbox" id="ly-districts" data-layer="districts"><i class="sw" style="background:linear-gradient(135deg,var(--fire-mark),var(--people-mark))"></i>Distritos: fuego y personas</label>
+            <label class="check"><input type="checkbox" id="ly-case" data-layer="case" checked><i class="sw" style="background:#8fd0f2"></i>Edificaciones del caso de estudio</label>
+          </fieldset>
+          <div>
+            <p class="lbl" style="font-weight:700;margin-bottom:0.4rem">Distancia al incendio</p>
+            <div class="seg" role="radiogroup" aria-label="Distancia al incendio en el explorador" data-radius-group>
+              <button type="button" role="radio" aria-checked="false" data-r="1">1 km</button>
+              <button type="button" role="radio" aria-checked="false" data-r="2">2 km</button>
+              <button type="button" role="radio" aria-checked="true" data-r="5">5 km</button>
+              <button type="button" role="radio" aria-checked="false" data-r="10">10 km</button>
+            </div>
+          </div>
+          <div>
+            <p class="lbl" style="font-weight:700;margin-bottom:0.4rem">Incendios activos por prioridad</p>
+            <ul class="fires" id="fires-list"></ul>
+          </div>
+        </div>
+        <div class="map-frame">
+          <div class="map" id="map-explore" role="region" aria-label="Mapa interactivo de incendios y distritos"></div>
+          <div class="zoom">
+            <button type="button" id="zoom-in" aria-label="Acercar">+</button>
+            <button type="button" id="zoom-out" aria-label="Alejar">−</button>
+            <button type="button" class="wide" id="zoom-peru">Todo el Perú</button>
+          </div>
+          <div class="pick" id="pick" aria-live="polite" hidden></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="distritos" aria-labelledby="tb-title">
+    <div class="wrap">
+      <div class="prose">
+        <h2 id="tb-title">Distritos con personas cerca del fuego</h2>
+        <p>Distritos con al menos una persona a menos de 10 km de un incendio activo, según WorldPop 2026, y edificaciones a menos de 5 km según Google Open Buildings.</p>
+      </div>
+      <div class="table-tools">
+        <button class="btn" type="button" id="copy-csv">Copiar la tabla en CSV</button>
+        <button class="btn" type="button" id="show-all" hidden>Mostrar todos</button>
+        <span class="small" id="copy-status" aria-live="polite"></span>
+      </div>
+      <textarea class="csv" id="csv-fallback" readonly hidden aria-label="Tabla en formato CSV"></textarea>
+      <div class="table-wrap">
+        <table id="dist-table">
+          <thead>
+            <tr>
+              <th scope="col" data-key="name"><button type="button">Distrito</button></th>
+              <th scope="col" data-key="prov"><button type="button">Provincia</button></th>
+              <th scope="col" data-key="dep"><button type="button">Departamento</button></th>
+              <th scope="col" data-key="p1"><button type="button">Personas a 1 km</button></th>
+              <th scope="col" data-key="p2"><button type="button">a 2 km</button></th>
+              <th scope="col" data-key="p5" aria-sort="descending"><button type="button">a 5 km</button></th>
+              <th scope="col" data-key="p10"><button type="button">a 10 km</button></th>
+              <th scope="col" data-key="b5"><button type="button">Edificaciones a 5 km</button></th>
+              <th scope="col" data-key="hot7"><button type="button">Focos en 7 días</button></th>
+              <th scope="col"><span class="sr">Mapa</span></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="metodo" aria-labelledby="mt-title">
+    <div class="wrap">
+      <div class="prose">
+        <h2 id="mt-title">Cómo se hizo</h2>
+        <p>Todo el cálculo está en Python (pandas, geopandas, rasterio y rasterstats) y se puede repetir con un solo comando. Las cifras de esta página salen de esos archivos, sin ajustes a mano.</p>
+
+        <h3>Focos de calor</h3>
+        <p>Se usaron los focos VIIRS de 375 m de los satélites S-NPP, NOAA-20 y NOAA-21, distribuidos por NASA FIRMS, desde el 1 de julio de 2026 hasta el corte. Se descartaron <b id="m-low">n. d.</b> focos de confianza baja, <b id="m-volc">n. d.</b> a menos de 3 km de volcanes activos y <b id="m-pers">n. d.</b> de fuentes fijas, es decir, píxeles que se repiten muchos días seguidos, como las quemas de gas.</p>
+
+        <h3>Incendios</h3>
+        <p>Un incendio es un grupo de focos a menos de 1 km y 48 horas entre sí. Está activo si tuvo al menos un foco en las 24 horas previas al corte. Su huella es el número de píxeles con fuego multiplicado por 14,06 ha, el área de un píxel de 375 m; no es el área quemada oficial.</p>
+        <p>Un foco dentro de una ciudad suele ser una industria, un botadero o calor urbano. Por eso se dejaron fuera <b id="m-flag">n. d.</b> incendios activos. Unos están en zonas urbanas: 5000 personas o más a 1 km, o 1500 habitantes por km², el umbral de centro urbano de Eurostat y la ONU. Los otros son fuentes fijas: dos focos o menos en un lugar que ya tuvo detecciones a menos de 500 m al menos 30 días antes.</p>
+
+        <h3>Exposición</h3>
+        <p>Alrededor de cada foco de las últimas 48 horas de un incendio activo se trazó un círculo de 1, 2, 5 y 10 km en una proyección de áreas iguales (South America Albers), y los círculos se unieron para no contar dos veces a nadie. Las personas son la suma de WorldPop 2026 (100 m) dentro de esa zona. Las edificaciones son los polígonos de Google Open Buildings v3 con confianza de 0,75 o más.</p>
+
+        <h3>Prioridad</h3>
+        <p>Cada incendio activo recibe un puntaje de 0 a 100. Cada término se normaliza entre el mínimo y el máximo de los incendios activos:</p>
+        <p class="formula" id="m-formula">100 × (0,35·personas a 5 km + 0,25·huella + 0,20·potencia radiativa en 24 h + 0,20·focos en 24 h)</p>
+
+        <h3>Fuentes</h3>
+        <ul>
+          <li><a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener">NASA FIRMS</a>: focos VIIRS NRT, del 1 de julio al corte.</li>
+          <li><a href="https://hub.worldpop.org/" target="_blank" rel="noopener">WorldPop</a>: población 2026, versión R2025A, 100 m, ajustada a edificaciones.</li>
+          <li><a href="https://sites.research.google/gr/open-buildings/" target="_blank" rel="noopener">Google Open Buildings v3</a>: edificaciones detectadas en imágenes satelitales.</li>
+          <li><a href="https://huggingface.co/datasets/aquiro1994/ds-python-up" target="_blank" rel="noopener">Límites distritales</a> del curso (1873 distritos, INEI).</li>
+          <li><a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">AWS Terrain Tiles</a>: relieve.</li>
+        </ul>
+
+        <h3>Limitaciones</h3>
+        <ul>
+          <li>Un foco de calor no es un incendio: también son quemas agrícolas y de pastos.</li>
+          <li>Las nubes y el bosque cerrado esconden el fuego, y los incendios pequeños no se detectan.</li>
+          <li>El satélite ve píxeles de 375 m. La posición exacta del fuego dentro del píxel no se conoce.</li>
+          <li>WorldPop es una estimación modelada, no un censo.</li>
+          <li>Open Buildings puede omitir techos bajo árboles o contar construcciones que no son viviendas.</li>
+          <li>Un radio no es una zona de evacuación: el viento y la pendiente deciden hacia dónde avanza el fuego.</li>
+          <li>Las cifras valen para la hora del corte. Los satélites pasan sobre el Perú cerca de la 1:30 y de las 13:30.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="small">Herramienta independiente hecha con datos abiertos. No reemplaza los reportes del COEN, INDECI, SERFOR ni SERNANP.</p>
+    <p class="small" id="repo-line" hidden>Código y datos: <a id="repo-link" href="#" target="_blank" rel="noopener">repositorio en GitHub</a>.</p>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/deck.gl@9.0.38/dist.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  const REPO_URL = 'https://github.com/rodnm/mapa-incendios-peru-2026';
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const PERU = [-81.4, -18.4, -68.6, 0.0];
+  const HOUR = 3600e3;
+
+  // fr-FR gives space-grouped thousands and a decimal comma, as in the course deck; its narrow space is
+  // swapped for a regular no-break space so the groups stay visible in the body face.
+  const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+  const nf1 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
+  const spaced = s => s.replace(/[  ]/g, ' ');
+  const n0 = v => (v == null || !isFinite(v)) ? 'n. d.' : spaced(nf0.format(Math.round(v)));
+  const n1 = v => (v == null || !isFinite(v)) ? 'n. d.' : spaced(nf1.format(v));
+  const dLong = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'long', timeZone: 'America/Lima' });
+  const dFull = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'America/Lima' });
+  const fmtDate = (s, f = dLong) => { const t = Date.parse(s); return isFinite(t) ? f.format(t) : (s || 'n. d.'); };
+  const SMALL_WORDS = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'e']);
+  const tc = s => (s || '').toLowerCase().replace(/\S+/g, (w, i) => (i > 0 && SMALL_WORDS.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1));
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  // Colors on the night map. Fire and people were validated as a CVD-safe pair on #070b14.
+  const FIRE = [229, 102, 28];
+  const PEOPLE = [47, 151, 207];
+  const BASE = [22, 29, 43];
+  const THERMAL = [[0, [120, 20, 14]], [0.3, [196, 44, 22]], [0.55, [229, 102, 28]], [0.78, [255, 176, 59]], [1, [255, 240, 205]]];
+  const frpPos = frp => clamp(Math.log10(Math.max(0, frp) + 1) / Math.log10(301), 0, 1);
+  function thermal(frp) {
+    const v = frpPos(frp);
+    for (let i = 1; i < THERMAL.length; i++) {
+      const [p1, c1] = THERMAL[i], [p0, c0] = THERMAL[i - 1];
+      if (v <= p1) { const k = (v - p0) / (p1 - p0); return c0.map((c, j) => Math.round(c + (c1[j] - c) * k)); }
+    }
+    return THERMAL[THERMAL.length - 1][1];
+  }
+  const rgb = c => `rgb(${c.join(',')})`;
+  // Bivariate cell: fire and people add like light, so the high-high corner turns white.
+  function biv(fc, pc) {
+    const f = [0, 0.5, 1][fc], p = [0, 0.5, 1][pc], k = 1 - Math.max(f, p);
+    return [0, 1, 2].map(i => Math.min(255, Math.round(BASE[i] * k + FIRE[i] * f + PEOPLE[i] * p)));
+  }
+  const DIST_CLASSES = [[500, [230, 246, 255], 'menos de 500 m'], [1000, [143, 208, 242], '500 m a 1 km'], [2000, [47, 151, 207], '1 a 2 km'], [Infinity, [29, 78, 110], 'más de 2 km']];
+  const distColor = d => (DIST_CLASSES.find(c => d < c[0]) || DIST_CLASSES[3])[1];
+
+  const ADD = { blendColorOperation: 'add', blendColorSrcFactor: 'src-alpha', blendColorDstFactor: 'one', blendAlphaOperation: 'add', blendAlphaSrcFactor: 'one', blendAlphaDstFactor: 'one-minus-src-alpha', depthCompare: 'always' };
+  const MAXB = { blendColorOperation: 'max', blendAlphaOperation: 'max', depthCompare: 'always' };
+  const TIP_STYLE = { backgroundColor: 'rgba(7,11,20,.95)', color: '#e9edf3', font: '500 13px/1.45 "Schibsted Grotesk", system-ui, sans-serif', padding: '8px 10px', borderRadius: '6px', border: '1px solid rgba(201,210,223,.22)', maxWidth: '260px' };
+
+  const A = {}; // prepared data shared by both maps
+
+  // ---------- Loading ----------
+  const getJSON = p => fetch(p).then(r => { if (!r.ok) throw new Error(`${p} (${r.status})`); return r.json(); });
+  const getText = p => fetch(p).then(r => { if (!r.ok) throw new Error(`${p} (${r.status})`); return r.text(); });
+  const getImage = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(src)); im.src = src; });
+
+  async function load() {
+    const files = {
+      summary: 'data/summary.json', hotspots: 'data/hotspots.json', fires: 'data/fires.json',
+      topo: 'data/districts.topo.json', series: 'data/series.json', caseStudy: 'data/case_study.json',
+      relief: 'assets/relief.json', pop: 'assets/population.json'
+    };
+    const optional = { buffers: 'data/buffers.json' };
+    await Promise.all(Object.entries(optional).map(([k, p]) => getJSON(p).then(v => { optional[k] = v; }, () => { optional[k] = null; })));
+    const keys = Object.keys(files);
+    const res = await Promise.allSettled(keys.map(k => getJSON(files[k])));
+    const D = {}, missing = [];
+    res.forEach((r, i) => { if (r.status === 'fulfilled') D[keys[i]] = r.value; else missing.push(files[keys[i]]); });
+    if (!D.topo) {
+      try { D.geo = await getJSON('data/districts.geojson'); missing.splice(missing.indexOf(files.topo), 1); } catch (e) { /* keep reported */ }
+    }
+    const imgs = await Promise.allSettled([getImage('assets/relief_dark.png'), getImage('assets/population.png')]);
+    D.reliefImg = imgs[0].status === 'fulfilled' ? imgs[0].value : null;
+    D.popImg = imgs[1].status === 'fulfilled' ? imgs[1].value : null;
+    D.csv = await getText('data/exposure_by_district.csv').catch(() => null);
+    D.buffers = optional.buffers;
+    return { D, missing };
+  }
+
+  // ---------- Preparation ----------
+  function prepare(D) {
+    A.S = D.summary || {};
+    const H = D.hotspots;
+    A.t0 = Date.parse((H && H.t0) || (A.S.season_start ? A.S.season_start + 'T00:00:00Z' : '2026-07-01T00:00:00Z'));
+    A.cutMs = Date.parse(A.S.cutoff_utc) || null;
+
+    if (H && H.x && H.x.length) {
+      const n = H.x.length;
+      const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => H.t[a] - H.t[b]);
+      const pos = new Float32Array(n * 2), col = new Uint8Array(n * 4), t = new Float32Array(n), f = new Int32Array(n);
+      for (let k = 0; k < n; k++) {
+        const i = order[k];
+        pos[2 * k] = H.x[i]; pos[2 * k + 1] = H.y[i];
+        t[k] = H.t[i];
+        f[k] = H.f ? H.f[i] : -1;
+        const c = thermal(H.frp ? H.frp[i] : 5);
+        col[4 * k] = c[0]; col[4 * k + 1] = c[1]; col[4 * k + 2] = c[2]; col[4 * k + 3] = 255;
+      }
+      A.hot = { n, pos, t, f };
+      A.hotData = { length: n, attributes: { getPosition: { value: pos, size: 2 }, getFillColor: { value: col, size: 4 }, getFilterValue: { value: t, size: 1 } } };
+      A.cutH = A.cutMs ? (A.cutMs - A.t0) / HOUR : t[n - 1];
+    } else {
+      A.cutH = A.cutMs ? (A.cutMs - A.t0) / HOUR : 0;
+    }
+
+    const allFires = Array.isArray(D.fires) ? D.fires : [];
+    A.urbanFires = allFires.filter(d => d.urban);
+    A.fires = allFires.filter(d => !d.urban).sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    A.fireById = new Map(A.fires.map(d => [d.id, d]));
+    if (A.hot && A.fires.length) {
+      const active = new Set(A.fires.map(d => d.id));
+      const idx = [];
+      for (let k = 0; k < A.hot.n; k++) if (active.has(A.hot.f[k])) idx.push(k);
+      const p = new Float32Array(idx.length * 2);
+      idx.forEach((k, j) => { p[2 * j] = A.hot.pos[2 * k]; p[2 * j + 1] = A.hot.pos[2 * k + 1]; });
+      A.activeData = { length: idx.length, attributes: { getPosition: { value: p, size: 2 } } };
+    }
+    if (A.fires.length) {
+      const xs = A.fires.map(d => d.lon), ys = A.fires.map(d => d.lat);
+      A.firesBounds = [Math.max(PERU[0], Math.min(...xs) - 0.6), Math.max(PERU[1], Math.min(...ys) - 0.6), Math.min(PERU[2], Math.max(...xs) + 0.6), Math.min(PERU[3], Math.max(...ys) + 0.6)];
+    }
+
+    // Districts
+    let fc = null;
+    if (D.topo && window.topojson) {
+      const obj = D.topo.objects.districts || Object.values(D.topo.objects)[0];
+      fc = topojson.feature(D.topo, obj);
+      A.depPaths = topojson.mesh(D.topo, obj, (a, b) => a !== b && a.properties.dep !== b.properties.dep).coordinates;
+      A.countryPaths = topojson.mesh(D.topo, obj, (a, b) => a === b).coordinates;
+    } else if (D.geo) {
+      fc = D.geo;
+    }
+    if (fc) {
+      const feats = fc.features;
+      const med = key => { const a = feats.map(f => +f.properties[key] || 0).filter(v => v > 0).sort((x, y) => x - y); return a.length ? a[Math.floor((a.length - 1) / 2)] : 0; };
+      A.breakFire = med('hot7'); A.breakPeople = med('p5');
+      const cls = (v, b) => !(v > 0) ? 0 : (v <= b ? 1 : 2);
+      for (const f of feats) {
+        const p = f.properties;
+        const fcl = cls(+p.hot7, A.breakFire), pcl = cls(+p.p5, A.breakPeople);
+        p._col = [...biv(fcl, pcl), (fcl || pcl) ? 220 : 90];
+        p._bbox = bboxOf(f.geometry);
+      }
+      A.distFC = fc;
+      A.districts = feats.map(f => f.properties);
+    }
+
+    // Case study
+    const C = D.caseStudy;
+    if (C && C.buildings) {
+      const B = C.buildings, dist = B.dist_m || [];
+      A.caseType = B.type === 'point' ? 'point' : 'polygon';
+      A.caseB = (B.coords || []).map((c, i) => ({ g: c, d: dist[i] ?? Infinity }));
+      A.casePix = (C.hotspots || []).map(([lon, lat, frp, h]) => ({ ring: square(lon, lat, 187.5), frp, h, lon, lat }));
+      A.caseRings = Object.entries(C.rings || {}).map(([k, path]) => ({ k, path }));
+      A.caseRingLabels = A.caseRings.map(r => { let top = r.path[0]; for (const p of r.path) if (p[1] > top[1]) top = p; return { pos: top, text: `${r.k} km` }; });
+      const r5 = (C.rings || {})['5'];
+      if (r5 && r5.length) A.caseBounds = boundsOf(r5, 0.01);
+    }
+    const cs = A.S.case_study;
+    if (!A.caseBounds && cs) A.caseBounds = cs.bbox || [cs.lon - 0.06, cs.lat - 0.06, cs.lon + 0.06, cs.lat + 0.06];
+    if (cs && isFinite(cs.lon)) A.regionBounds = [cs.lon - 0.32, cs.lat - 0.32, cs.lon + 0.32, cs.lat + 0.32];
+
+    A.relief = D.relief && D.reliefImg ? { bounds: D.relief.bounds, img: D.reliefImg } : null;
+    A.pop = D.pop && D.popImg ? { bounds: D.pop.bounds, max: D.pop.max_density, img: D.popImg } : null;
+    A.series = D.series || null;
+    A.csv = D.csv;
+    // Dissolved exposure zones, built once so the layer does not re-tessellate on every frame.
+    A.bufferFeatures = D.buffers ? Object.fromEntries(Object.entries(D.buffers).filter(([, g]) => g && g.type).map(([r, g]) => [r, { type: 'Feature', geometry: g, properties: {} }])) : null;
+  }
+
+  function square(lon, lat, half) {
+    const dy = half / 111320, dx = half / (111320 * Math.cos(lat * Math.PI / 180));
+    return [[lon - dx, lat - dy], [lon + dx, lat - dy], [lon + dx, lat + dy], [lon - dx, lat + dy], [lon - dx, lat - dy]];
+  }
+  function boundsOf(pts, m = 0) {
+    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+    for (const [x, y] of pts) { if (x < w) w = x; if (x > e) e = x; if (y < s) s = y; if (y > n) n = y; }
+    return [w - m, s - m, e + m, n + m];
+  }
+  function bboxOf(g) {
+    const pts = [];
+    const walk = c => { if (typeof c[0] === 'number') pts.push(c); else c.forEach(walk); };
+    if (g && g.coordinates) walk(g.coordinates);
+    return pts.length ? boundsOf(pts) : null;
+  }
+  function upperBound(arr, v) { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] <= v) lo = m + 1; else hi = m; } return lo; }
+
+  // ---------- Layers (shared by the story and the explorer) ----------
+  let FILTER = null;
+  function buildLayers(S, P) {
+    const o = S.op, L = [];
+    if (A.relief && o.relief > 0.01) L.push(new deck.BitmapLayer({ id: P + 'relief', image: A.relief.img, bounds: A.relief.bounds, opacity: o.relief }));
+    if (A.pop && o.pop > 0.01) L.push(new deck.BitmapLayer({ id: P + 'pop', image: A.pop.img, bounds: A.pop.bounds, opacity: o.pop }));
+    if (A.distFC && o.districts > 0.01) {
+      L.push(new deck.GeoJsonLayer({ id: P + 'districts', data: A.distFC, filled: true, stroked: true, getFillColor: f => f.properties._col, getLineColor: [201, 210, 223, 34], lineWidthUnits: 'pixels', getLineWidth: 0.5, pickable: true, autoHighlight: true, highlightColor: [255, 255, 255, 70], opacity: o.districts }));
+      if (A.depPaths) L.push(new deck.PathLayer({ id: P + 'deps', data: A.depPaths, getPath: d => d, getColor: [201, 210, 223, 110], widthUnits: 'pixels', getWidth: 1, opacity: o.districts }));
+    }
+    if (A.countryPaths) L.push(new deck.PathLayer({ id: P + 'country', data: A.countryPaths, getPath: d => d, getColor: [201, 210, 223, 120], widthUnits: 'pixels', getWidth: 1 }));
+    const zone = o.buffers > 0.01 && A.bufferFeatures && A.bufferFeatures[String(S.radius)];
+    if (zone) {
+      L.push(new deck.GeoJsonLayer({ id: P + 'buffers', data: zone, filled: true, stroked: true, getFillColor: [47, 151, 207, 52], getLineColor: [150, 205, 235, 220], lineWidthUnits: 'pixels', getLineWidth: 1, opacity: o.buffers }));
+    } else if (A.activeData && o.buffers > 0.01) {
+      const tint = [26, 74, 104].map(c => Math.round(c * o.buffers));
+      L.push(new deck.ScatterplotLayer({ id: P + 'buffers', data: A.activeData, radiusUnits: 'meters', getRadius: S.radius * 1000, getFillColor: () => [...tint, 255], updateTriggers: { getFillColor: tint.join(',') }, parameters: MAXB }));
+    }
+    if (A.hotData && FILTER) {
+      const meters = S.units === 'meters';
+      if (o.embers > 0.01) L.push(new deck.ScatterplotLayer({ id: P + 'embers', data: A.hotData, radiusUnits: meters ? 'meters' : 'pixels', getRadius: meters ? 187 : 1, radiusMinPixels: 0.8, opacity: 0.32 * o.embers, parameters: { depthCompare: 'always' }, extensions: [FILTER], filterRange: S.emberRange }));
+      if (o.halo > 0.01) L.push(new deck.ScatterplotLayer({ id: P + 'halo', data: A.hotData, radiusUnits: 'pixels', getRadius: 6, opacity: 0.12 * o.halo, parameters: ADD, extensions: [FILTER], filterRange: S.flameRange, filterSoftRange: S.flameSoft || null, filterTransformColor: true }));
+      if (o.flames > 0.01) L.push(new deck.ScatterplotLayer({ id: P + 'flames', data: A.hotData, radiusUnits: meters ? 'meters' : 'pixels', getRadius: meters ? 187 : 1.9, radiusMinPixels: 1.4, opacity: 0.95 * o.flames, parameters: ADD, extensions: [FILTER], filterRange: S.flameRange, filterSoftRange: S.flameSoft || null, filterTransformColor: true, filterTransformSize: true }));
+    }
+    if (A.urbanFires.length && o.fires > 0.01) {
+      L.push(new deck.ScatterplotLayer({ id: P + 'urban', data: A.urbanFires, getPosition: d => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: 5, stroked: true, filled: true, getFillColor: [0, 0, 0, 1], getLineColor: [139, 150, 168, 220], lineWidthUnits: 'pixels', getLineWidth: 1.25, pickable: true, autoHighlight: true, highlightColor: [201, 210, 223, 60], opacity: o.fires }));
+    }
+    if (A.fires.length && o.fires > 0.01) {
+      L.push(new deck.ScatterplotLayer({ id: P + 'fires', data: A.fires, getPosition: d => [d.lon, d.lat], radiusUnits: 'meters', getRadius: d => Math.sqrt(Math.max(d.footprint_ha || 0, 1) * 1e4 / Math.PI), radiusMinPixels: 5, stroked: true, filled: true, getFillColor: [0, 0, 0, 1], getLineColor: [255, 226, 196, 235], lineWidthUnits: 'pixels', getLineWidth: d => 1 + 2 * (d.priority || 0) / 100, pickable: true, autoHighlight: true, highlightColor: [255, 226, 196, 60], opacity: o.fires }));
+    }
+    if (A.caseB && o.case > 0.01 && S.caseVisible !== false) {
+      if (A.caseType === 'polygon') {
+        L.push(new deck.PolygonLayer({ id: P + 'buildings', data: A.caseB, getPolygon: d => d.g, getFillColor: d => distColor(d.d), stroked: false, pickable: true, opacity: o.case }));
+      } else {
+        L.push(new deck.ScatterplotLayer({ id: P + 'buildings', data: A.caseB, getPosition: d => d.g, radiusUnits: 'meters', getRadius: 5, radiusMinPixels: 1.5, getFillColor: d => distColor(d.d), pickable: true, opacity: o.case }));
+      }
+      L.push(new deck.PolygonLayer({ id: P + 'pixels', data: A.casePix, getPolygon: d => d.ring, getFillColor: d => [...thermal(d.frp), 150], getLineColor: [255, 200, 150, 220], stroked: true, lineWidthUnits: 'pixels', getLineWidth: 1, pickable: true, opacity: o.case }));
+      L.push(new deck.PathLayer({ id: P + 'rings', data: A.caseRings, getPath: d => d.path, getColor: [233, 237, 243, 170], widthUnits: 'pixels', getWidth: 1.2, opacity: o.case }));
+      L.push(new deck.TextLayer({ id: P + 'ringlabels', data: A.caseRingLabels, getPosition: d => d.pos, getText: d => d.text, getSize: 12, getColor: [233, 237, 243, 230], getPixelOffset: [0, -10], fontFamily: '"Schibsted Grotesk", system-ui, sans-serif', fontWeight: 600, fontSettings: { sdf: true }, outlineWidth: 3, outlineColor: [7, 11, 20, 255], opacity: o.case }));
+    }
+    if (A.fires.length && o.labels > 0.01) {
+      L.push(new deck.TextLayer({ id: P + 'labels', data: A.fires.slice(0, 5), getPosition: d => [d.lon, d.lat], getText: d => tc(d.district), getSize: 13, getColor: [233, 237, 243, 255], getTextAnchor: 'start', getAlignmentBaseline: 'center', getPixelOffset: [12, 0], fontFamily: '"Schibsted Grotesk", system-ui, sans-serif', fontWeight: 700, characterSet: 'auto', fontSettings: { sdf: true }, outlineWidth: 3, outlineColor: [7, 11, 20, 255], opacity: o.labels }));
+    }
+    return L;
+  }
+
+  function tooltip({ object, layer }) {
+    if (!object || !layer) return null;
+    const id = layer.id;
+    let html = null;
+    if (id.endsWith('urban')) html = `<b>${esc(tc(object.district))}</b>, ${esc(tc(object.department))}<br>Posible fuente urbana o industrial.<br>No entra en el cálculo de exposición.`;
+    else if (id.endsWith('fires')) html = fireHTML(object);
+    else if (id.endsWith('districts')) html = districtHTML(object.properties);
+    else if (id.endsWith('buildings')) html = `Edificación a <b>${n0(object.d)} m</b> del foco más cercano`;
+    else if (id.endsWith('pixels')) html = `Píxel VIIRS de 375 m con <b>${n0(object.frp)} MW</b> de potencia radiativa`;
+    return html ? { html, style: TIP_STYLE } : null;
+  }
+  const fireHTML = d => `<b>Incendio en ${esc(tc(d.district))}</b><br>${esc(tc(d.province))}, ${esc(tc(d.department))}<br>Prioridad ${n0(d.priority)} de 100<br>${n0(d.n24)} focos en 24 h, huella de ${n0(d.footprint_ha)} ha<br>${n0(d.people && d.people['5'])} personas y ${n0(d.buildings && d.buildings['5'])} edificaciones a 5 km`;
+  const districtHTML = p => `<b>${esc(tc(p.name))}</b><br>${esc(tc(p.prov))}, ${esc(tc(p.dep))}<br>${n0(p.hot7)} focos en 7 días<br>${n0(p.p5)} personas y ${n0(p.b5)} edificaciones a 5 km de un incendio activo`;
+
+  // ---------- Views ----------
+  function viewFor(key, el, mode) {
+    const w = el.clientWidth || innerWidth, h = el.clientHeight || innerHeight;
+    const b = ({ peru: PERU, fires: A.firesBounds, region: A.regionBounds, case: A.caseBounds, tmp: A.tmpBounds })[key] || PERU;
+    let pad;
+    if (mode === 'story') {
+      if (w >= 760) { const card = Math.min(28 * 16, w * 0.42); pad = { left: card + 48, right: 250, top: 36, bottom: 36 }; }
+      else pad = { left: 12, right: 12, top: 150, bottom: Math.round(h * 0.46) };
+    } else pad = { left: 24, right: 24, top: 24, bottom: 24 };
+    const sx = (pad.left + pad.right) / Math.max(1, w - 120), sy = (pad.top + pad.bottom) / Math.max(1, h - 120);
+    if (sx > 1) { pad.left /= sx; pad.right /= sx; }
+    if (sy > 1) { pad.top /= sy; pad.bottom /= sy; }
+    try {
+      const vp = new deck.WebMercatorViewport({ width: w, height: h }).fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: pad, maxZoom: 14 });
+      return { longitude: vp.longitude, latitude: vp.latitude, zoom: vp.zoom, pitch: 0, bearing: 0 };
+    } catch (e) {
+      return { longitude: (b[0] + b[2]) / 2, latitude: (b[1] + b[3]) / 2, zoom: 4.5, pitch: 0, bearing: 0 };
+    }
+  }
+  const fly = (v, ms) => ({ ...v, transitionDuration: REDUCED ? 0 : (ms || 'auto'), transitionInterpolator: new deck.FlyToInterpolator({ speed: 1.6, maxDuration: 2600 }) });
+
+  function scaleHTML(vs) {
+    if (!vs) return '';
+    const mpp = 40075016.686 * Math.cos(vs.latitude * Math.PI / 180) / (512 * Math.pow(2, vs.zoom));
+    const nice = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500];
+    let km = nice[0];
+    for (const k of nice) if (k * 1000 / mpp <= 110) km = k;
+    const px = Math.round(km * 1000 / mpp);
+    return `<div class="scale"><i style="width:${px}px"></i><span>${n1(km)} km</span></div>`;
+  }
+
+  // ---------- Legends ----------
+  const thermalGradient = () => `linear-gradient(90deg, ${THERMAL.map(([p, c]) => `${rgb(c)} ${Math.round(p * 100)}%`).join(', ')})`;
+  const ticksHTML = list => `<div class="ticks">${list.map(([pos, label]) => `<span style="left:${(pos * 100).toFixed(1)}%">${label}</span>`).join('')}</div>`;
+  function legendFire(extra) {
+    return `<h3>Potencia radiativa del foco</h3><div class="ramp" style="background:${thermalGradient()}"></div>${ticksHTML([[frpPos(1), '1 MW'], [frpPos(10), '10'], [frpPos(100), '100']])}${extra || ''}`;
+  }
+  function legendPeople() {
+    const max = (A.pop && A.pop.max) || 30000;
+    const pos = v => Math.log10(v + 1) / Math.log10(max + 1);
+    const ticks = [[10, '10'], [100, '100'], [1000, '1000'], [10000, '10 000']].filter(([v]) => v < max).map(([v, l]) => [pos(v), l]);
+    return `<h3>Personas por km²</h3><div class="ramp" style="background:linear-gradient(90deg, rgba(29,78,137,.15) 0%, #1d4e89 15%, #3fa7d6 55%, #e0fbfc 100%)"></div>${ticksHTML(ticks)}`;
+  }
+  function legendBiv() {
+    let cells = '';
+    for (let f = 2; f >= 0; f--) for (let p = 0; p <= 2; p++) cells += `<i class="sw" style="width:22px;height:22px;background:${rgb(biv(f, p))}"></i>`;
+    return `<h3>Fuego y personas por distrito</h3><div class="biv"><span class="biv-y">Más focos en 7 días</span><div class="biv-grid">${cells}</div><span class="biv-x">Más personas a 5 km</span></div><p class="muted">Cortes: hasta ${n0(A.breakFire)} focos y hasta ${n0(A.breakPeople)} personas en el tramo medio.</p>`;
+  }
+  function legendBuffers(r) {
+    return `<h3>Zona de exposición</h3><div class="lg-row"><i class="sw" style="background:rgba(47,151,207,.35);border:1px solid #96cdeb;box-sizing:border-box"></i>A menos de ${r} km de un foco de un incendio activo</div><div class="lg-row"><i class="sw ring"></i>Incendio activo</div>`;
+  }
+  function legendCase() {
+    return `<h3>Edificaciones por distancia al fuego</h3>${DIST_CLASSES.map(c => `<div class="lg-row"><i class="sw" style="background:${rgb(c[1])}"></i>${c[2]}</div>`).join('')}<div class="lg-row"><i class="sw px"></i>Píxel VIIRS de 375 m</div>`;
+  }
+
+  // ---------- Story ----------
+  const LAYER_KEYS = ['relief', 'pop', 'districts', 'buffers', 'embers', 'halo', 'flames', 'fires', 'labels', 'case'];
+  const ops = o => Object.fromEntries(LAYER_KEYS.map(k => [k, o[k] || 0]));
+  const STEPS = [
+    { view: 'peru', time: 'replay', op: ops({ relief: 1, embers: 1, halo: 1, flames: 1 }), label: 'Mapa del Perú con los focos de calor de la temporada 2026 apareciendo día a día' },
+    { view: 'fires', time: '7d', op: ops({ relief: 1, embers: 1, halo: 1, flames: 1, fires: 1, labels: 1 }), label: 'Focos de calor de los últimos 7 días e incendios activos' },
+    { view: 'peru', time: '7d', op: ops({ relief: 0.7, pop: 1, embers: 0.8, halo: 0.7, flames: 1, fires: 0.5 }), label: 'Densidad de población de WorldPop 2026 con los focos de calor encima' },
+    { view: 'peru', time: '7d', op: ops({ relief: 0.45, districts: 1, embers: 0.3, flames: 0.5 }), label: 'Distritos coloreados por focos en 7 días y personas a 5 km de un incendio activo' },
+    { view: 'region', time: '7d', op: ops({ relief: 1, pop: 0.35, buffers: 1, embers: 0.7, halo: 1, flames: 1, fires: 1 }), label: 'Zona de exposición alrededor de los incendios activos' },
+    { view: 'case', time: '7d', op: ops({ relief: 0.7, case: 1 }), label: 'Edificaciones junto al incendio del caso de estudio, coloreadas por distancia al fuego' },
+    { view: 'peru', time: '7d', op: ops({ relief: 1, embers: 1, halo: 1, flames: 1, fires: 1 }), label: 'Focos de calor de los últimos 7 días en el Perú' }
+  ];
+
+  const story = { step: -1, op: ops({}), target: ops({}), radius: 5, units: 'pixels', emberRange: [0, 1], flameRange: [0, 1], flameSoft: null, view: null };
+  const replay = { T: 0, playing: false, last: 0, dur: 22000, played: false };
+  let storyDeck = null, exploreDeck = null;
+
+  function setTimeMode(S, mode) {
+    const cut = A.cutH;
+    if (mode === 'replay') {
+      const T = replay.T;
+      S.emberRange = [-1, T]; S.flameRange = [T - 48, T]; S.flameSoft = [T - 24, T];
+    } else {
+      S.emberRange = [cut - 168, cut + 1]; S.flameRange = [cut - 24, cut + 1]; S.flameSoft = null;
+    }
+  }
+
+  function setStep(i) {
+    if (i === story.step) return;
+    story.step = i;
+    const cfg = STEPS[i];
+    story.target = { ...cfg.op };
+    story.mode = cfg.time;
+    if (cfg.time !== 'replay') { replay.playing = false; replay.T = A.cutH; updateReplayButton(); }
+    setTimeMode(story, cfg.time);
+    const el = $('#map-story');
+    el.setAttribute('aria-label', cfg.label);
+    el.parentElement.dataset.step = String(i);
+    // The scale bar shows the destination view; onViewStateChange refines it if the transition reports frames.
+    story.view = viewFor(cfg.view, el, 'story');
+    storyDeck && storyDeck.setProps({ initialViewState: fly(story.view) });
+    renderLegend();
+    if (i === 0 && !replay.played && !REDUCED && A.hot) startReplay(true);
+    kick();
+  }
+
+  function renderLegend() {
+    const i = story.step, sc = scaleHTML(story.view);
+    let html = '';
+    const rings = `<div class="lg-row"><i class="sw ring"></i>Incendio activo (tamaño según la huella)</div>${A.urbanFires.length ? '<div class="lg-row"><i class="sw ring" style="border-color:#8b96a8"></i>Posible fuente urbana o industrial</div>' : ''}`;
+    if (i === 0 || i === 1 || i === 6) html = legendFire(A.fires.length && i !== 0 ? rings : '');
+    else if (i === 2) html = legendPeople() + legendFire();
+    else if (i === 3) html = legendBiv();
+    else if (i === 4) html = legendBuffers(story.radius);
+    else if (i === 5) html = legendCase();
+    $('#legend').innerHTML = html + sc;
+  }
+
+  // One animation loop drives the season replay and the layer cross-fades.
+  let looping = false;
+  function kick() { if (!looping) { looping = true; requestAnimationFrame(frame); } }
+  function frame(now) {
+    let busy = false;
+    if (replay.playing) {
+      const dt = replay.last ? now - replay.last : 16;
+      replay.last = now;
+      replay.T = Math.min(A.cutH, replay.T + A.cutH * dt / replay.dur);
+      if (replay.T >= A.cutH) { replay.playing = false; replay.played = true; updateReplayButton(); }
+      if (story.mode === 'replay') setTimeMode(story, 'replay');
+      updateHUD();
+      busy = true;
+    }
+    for (const k of LAYER_KEYS) {
+      const c = story.op[k], t = story.target[k], d = t - c;
+      if (Math.abs(d) > 0.004 && !REDUCED) { story.op[k] = c + d * 0.12; busy = true; } else story.op[k] = t;
+    }
+    if (storyDeck) storyDeck.setProps({ layers: buildLayers(story, 'st-') });
+    if (busy) requestAnimationFrame(frame); else looping = false;
+  }
+
+  function startReplay(fromStart) {
+    if (!A.hot) return;
+    if (fromStart || replay.T >= A.cutH) replay.T = 0;
+    replay.playing = true; replay.last = 0;
+    updateReplayButton(); kick();
+  }
+  function updateReplayButton() {
+    const b = $('#replay');
+    if (!b) return;
+    b.textContent = replay.playing ? 'Pausar' : (replay.T > 0 && replay.T < A.cutH ? 'Continuar' : 'Reproducir la temporada');
+  }
+
+  // ---------- Hero HUD and sparkline ----------
+  let spark = null;
+  function buildSpark() {
+    const svg = $('#spark'), S = A.series;
+    if (!S || !S.total || !S.total.length) { svg.setAttribute('hidden', ''); return; }
+    const W = 320, H = 56, n = S.total.length, max = Math.max(...S.total) || 1;
+    const x = i => (n === 1 ? 0 : i / (n - 1)) * W, y = v => H - 3 - (v / max) * (H - 8);
+    let line = '';
+    S.total.forEach((v, i) => { line += `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; });
+    const area = `${line}L${W},${H}L0,${H}Z`;
+    const imax = S.total.indexOf(max);
+    svg.innerHTML = `<line class="spark-grid" x1="0" x2="${W}" y1="${H - 0.5}" y2="${H - 0.5}"/><path class="spark-area" d="${area}"/><path class="spark-line" d="${line}" vector-effect="non-scaling-stroke"/><line class="spark-cursor" id="spark-cursor" x1="0" x2="0" y1="0" y2="${H}" vector-effect="non-scaling-stroke"/>`;
+    let acc = 0;
+    spark = { n, x, max, imax, cum: S.total.map(v => (acc += v)) };
+    const dayLabel = i => `${fmtDate(S.dates[i] + 'T12:00:00Z')}: ${n0(S.total[i])} focos`;
+    spark.rest = `Día con más focos: ${dayLabel(imax)}`;
+    set('spark-read', spark.rest);
+    svg.addEventListener('pointermove', e => {
+      const r = svg.getBoundingClientRect();
+      const i = clamp(Math.round((e.clientX - r.left) / r.width * (n - 1)), 0, n - 1);
+      set('spark-read', dayLabel(i));
+    });
+    svg.addEventListener('pointerleave', () => set('spark-read', spark.rest));
+  }
+  function updateHUD() {
+    const T = replay.T;
+    set('hud-date', dLong.format(A.t0 + T * HOUR));
+    // The map draws de-duplicated points; the counter uses the cleaned daily totals so it ends at the season figure.
+    set('hud-count', spark && spark.cum ? n0(spark.cum[clamp(Math.floor(T / 24), 0, spark.n - 1)]) : (A.hot ? n0(upperBound(A.hot.t, T)) : n0(A.S.hotspots_season)));
+    if (spark) {
+      const day = clamp(Math.floor(T / 24), 0, spark.n - 1);
+      const c = $('#spark-cursor');
+      if (c) { c.setAttribute('x1', spark.x(day)); c.setAttribute('x2', spark.x(day)); }
+    }
+  }
+
+  // ---------- Text from the data ----------
+  function fillText() {
+    const S = A.S;
+    const cutTxt = A.cutMs ? dFull.format(A.cutMs) : (S.cutoff_lima || 'n. d.');
+    set('k-cutoff', cutTxt);
+    if (A.cutMs) set('k-cut-day', dLong.format(A.cutMs));
+    set('k-season', n0(S.hotspots_season));
+    set('k-24h', n0(S.hotspots_24h));
+    set('k-7d', n0(S.hotspots_7d));
+    set('k-fires', n0(S.fires_active ?? A.fires.length));
+    set('k-big', n0(S.fires_active_gt100ha));
+    set('k-pop', n0(S.worldpop_total));
+    const ppd = S.persons_per_dwelling;
+    $$('.r-ppd').forEach(el => { el.textContent = n1(ppd); });
+
+    $('#top-fires').innerHTML = A.fires.slice(0, 3).map(d => `<li>${esc(tc(d.district))} (${esc(tc(d.department))}): prioridad ${n0(d.priority)}, ${n0(d.people && d.people['5'])} personas a 5 km</li>`).join('') || '<li>Sin incendios activos al corte.</li>';
+    $('#top-districts').innerHTML = (S.top_districts || []).slice(0, 5).map(d => `<li>${esc(tc(d.name))} (${esc(tc(d.department))}): ${n0(d.people_5km)} personas</li>`).join('') || '<li>Sin datos de exposición.</li>';
+
+    const c = S.case_study;
+    if (c) {
+      set('c-district', tc(c.district)); set('c-prov', tc(c.province)); set('c-dep', tc(c.department));
+      set('c-first', fmtDate(c.first_seen)); set('c-ha', n0(c.footprint_ha));
+      set('c-b1', n0(c.buildings_1km)); set('c-p1', n0(c.people_1km)); set('c-near', n0(c.nearest_building_m));
+    }
+    const U = S.urban_flagged;
+    if (U && U.fires > 0) {
+      const el = $('#k-urban');
+      el.textContent = `Los anillos grises son ${n0(U.fires)} incendios activos en zonas urbanas o industriales. Lo más probable es que sean fuentes de calor fijas y no fuego en vegetación, así que no entran en el cálculo.`;
+      el.hidden = false;
+    }
+    if (U) set('m-flag', n0(U.fires));
+    const rem = S.removed || {};
+    set('m-low', n0(rem.low_conf)); set('m-volc', n0(rem.volcano)); set('m-pers', n0(rem.persistent));
+    if (S.priority_formula) set('m-formula', S.priority_formula);
+    if (REPO_URL) { $('#repo-link').href = REPO_URL; $('#repo-line').hidden = false; }
+  }
+
+  function setRadius(r) {
+    story.radius = r; explore.radius = r;
+    $$('[data-radius-group] button').forEach(b => b.setAttribute('aria-checked', String(+b.dataset.r === r)));
+    const E = (A.S.exposure || {})[String(r)] || {};
+    set('r-km', String(r)); set('r-people', n0(E.people)); set('r-districts', n0(E.districts)); set('r-buildings', n0(E.buildings)); set('r-pfb', n0(E.people_from_buildings));
+    const gap = E.people > 0 && E.people_from_buildings != null ? (E.people_from_buildings - E.people) / E.people * 100 : null;
+    set('r-gap', gap == null ? 'n. d.' : `${gap >= 0 ? '+' : '−'}${n0(Math.abs(gap))} %`);
+    renderRadiusChart(r);
+    if (story.step === 4) renderLegend();
+    kick();
+    renderExplore();
+  }
+
+  function renderRadiusChart(sel) {
+    const svg = $('#radius-chart'), E = A.S.exposure;
+    if (!E) { svg.setAttribute('hidden', ''); return; }
+    const radii = [1, 2, 5, 10];
+    const vals = radii.map(r => E[String(r)] || {});
+    const max = Math.max(1, ...vals.flatMap(v => [v.people || 0, v.people_from_buildings || 0]));
+    const W = 320, left = 44, right = 74, rowH = 32, plot = W - left - right;
+    const sx = v => left + (v / max) * plot;
+    svg.setAttribute('viewBox', `0 0 ${W} ${radii.length * rowH + 4}`);
+    svg.innerHTML = radii.map((r, i) => {
+      const v = vals[i], y = i * rowH + 16, xb = sx(v.people || 0), xd = sx(v.people_from_buildings || 0);
+      const end = Math.max(xb, v.people_from_buildings != null ? xd + 6 : xb);
+      return `<g class="row${r === sel ? ' sel' : ''}" data-r="${r}"><rect x="0" y="${y - 14}" width="${W}" height="${rowH - 4}" fill="transparent"/><text x="0" y="${y + 4}">${r} km</text><rect class="bar" x="${left}" y="${y - 3}" width="${Math.max(2, xb - left).toFixed(1)}" height="6" rx="3"/>${v.people_from_buildings != null ? `<circle class="dot" cx="${xd.toFixed(1)}" cy="${y}" r="4"/>` : ''}<text x="${(end + 8).toFixed(1)}" y="${y + 4}">${n0(v.people)}</text></g>`;
+    }).join('');
+    $$('.row', svg).forEach(g => g.addEventListener('click', () => setRadius(+g.dataset.r)));
+  }
+
+  // ---------- Explorer ----------
+  const explore = { op: ops({ relief: 1, embers: 1, halo: 0.7, flames: 1, fires: 1, case: 1 }), caseVisible: false, radius: 5, units: 'meters', emberRange: [0, 1], flameRange: [0, 1], flameSoft: null };
+  let exploreView = null;
+  function renderExplore() { if (exploreDeck) exploreDeck.setProps({ layers: buildLayers(explore, 'ex-') }); }
+
+  function showPick(html) { const p = $('#pick'); p.innerHTML = `<button class="close" type="button" aria-label="Cerrar">×</button>${html}`; p.hidden = false; $('.close', p).addEventListener('click', () => { p.hidden = true; }); }
+  const pickFire = d => `<h3>Incendio en ${esc(tc(d.district))}</h3><p>${esc(tc(d.province))}, ${esc(tc(d.department))}</p><dl><dt>Prioridad</dt><dd>${n0(d.priority)} de 100</dd><dt>Focos en 24 h</dt><dd>${n0(d.n24)}</dd><dt>Huella</dt><dd>${n0(d.footprint_ha)} ha</dd><dt>Potencia en 24 h</dt><dd>${n0(d.frp24)} MW</dd><dt>Visto por primera vez</dt><dd>${esc(fmtDate(d.first_seen))}</dd>${[1, 2, 5, 10].map(r => `<dt>Personas a ${r} km</dt><dd>${n0(d.people && d.people[String(r)])}</dd>`).join('')}<dt>Edificaciones a 5 km</dt><dd>${n0(d.buildings && d.buildings['5'])}</dd></dl>`;
+  const pickDistrict = p => `<h3>${esc(tc(p.name))}</h3><p>${esc(tc(p.prov))}, ${esc(tc(p.dep))}${p.id != null ? `. Código ${esc(p.id)}` : ''}</p><dl><dt>Población 2026</dt><dd>${n0(p.pop)}</dd><dt>Focos en 7 días</dt><dd>${n0(p.hot7)}</dd><dt>Focos en la temporada</dt><dd>${n0(p.hot_season)}</dd>${['p1', 'p2', 'p5', 'p10'].map(k => `<dt>Personas a ${k.slice(1)} km</dt><dd>${n0(p[k])}</dd>`).join('')}<dt>Edificaciones a 5 km</dt><dd>${n0(p.b5)}</dd></dl>`;
+
+  function flyExplore(bounds, minSpan = 0.08) {
+    if (!exploreDeck || !bounds) return;
+    let [w, s, e, n] = bounds;
+    if (e - w < minSpan) { const c = (w + e) / 2; w = c - minSpan / 2; e = c + minSpan / 2; }
+    if (n - s < minSpan) { const c = (s + n) / 2; s = c - minSpan / 2; n = c + minSpan / 2; }
+    A.tmpBounds = [w, s, e, n];
+    exploreDeck.setProps({ initialViewState: fly(viewFor('tmp', $('#map-explore'), 'explore'), 1400) });
+  }
+  function focusFire(d) {
+    const r = 0.12;
+    flyExplore([d.lon - r, d.lat - r, d.lon + r, d.lat + r]);
+    showPick(pickFire(d));
+  }
+  function focusDistrict(p) {
+    if (p._bbox) flyExplore(p._bbox);
+    showPick(pickDistrict(p));
+  }
+
+  function buildExplorerPanel() {
+    $('#fires-list').innerHTML = A.fires.slice(0, 15).map(d => `<li><button type="button" data-fire="${esc(d.id)}"><span class="prio">${n0(d.priority)}</span><span class="fl-name">${esc(tc(d.district))}</span><span class="fl-meta">${esc(tc(d.department))}. ${n0(d.people && d.people['5'])} personas a 5 km</span><span class="pbar"><i style="width:${clamp(d.priority || 0, 0, 100)}%"></i></span></button></li>`).join('') || '<li class="small" style="padding:0.6rem 0">Sin incendios activos al corte.</li>';
+    $$('#fires-list button').forEach(b => b.addEventListener('click', () => { const d = A.fires.find(f => String(f.id) === b.dataset.fire); if (d) focusFire(d); }));
+
+    if (A.districts) {
+      const label = p => `${tc(p.name)}, ${tc(p.prov)}, ${tc(p.dep)}`;
+      A.byLabel = new Map(A.districts.map(p => [label(p).toLowerCase(), p]));
+      $('#district-list').innerHTML = A.districts.map(p => `<option value="${esc(label(p))}"></option>`).join('');
+      const q = $('#district-q');
+      const go = () => {
+        const v = q.value.trim().toLowerCase();
+        if (!v) return;
+        let p = A.byLabel.get(v);
+        if (!p) p = A.districts.find(d => (d.name || '').toLowerCase() === v) || A.districts.find(d => (d.name || '').toLowerCase().startsWith(v));
+        if (p) focusDistrict(p);
+      };
+      q.addEventListener('change', go);
+      q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    }
+
+    $$('.panel input[data-layer]').forEach(cb => cb.addEventListener('change', () => {
+      const k = cb.dataset.layer, v = cb.checked ? 1 : 0;
+      explore.op[k] = v;
+      if (k === 'flames') explore.op.halo = v * 0.7;
+      renderExplore();
+    }));
+    $('#zoom-in').addEventListener('click', () => zoomBy(1));
+    $('#zoom-out').addEventListener('click', () => zoomBy(-1));
+    $('#zoom-peru').addEventListener('click', () => exploreDeck && exploreDeck.setProps({ initialViewState: fly(viewFor('peru', $('#map-explore'), 'explore'), 1200) }));
+  }
+  function zoomBy(dz) {
+    if (!exploreDeck || !exploreView) return;
+    exploreDeck.setProps({ initialViewState: { ...exploreView, zoom: clamp(exploreView.zoom + dz, 3, 16), transitionDuration: REDUCED ? 0 : 300 } });
+  }
+
+  // ---------- District table ----------
+  const table = { key: 'p5', dir: -1, all: false };
+  function buildTable() {
+    let rows = A.districts ? A.districts.filter(p => (+p.p10 || 0) > 0) : parseCSVRows(A.csv);
+    A.tableRows = rows;
+    const showAll = $('#show-all');
+    showAll.hidden = rows.length <= 25;
+    showAll.addEventListener('click', () => { table.all = !table.all; showAll.textContent = table.all ? 'Mostrar los primeros 25' : `Mostrar todos (${rows.length})`; renderTable(); });
+    showAll.textContent = `Mostrar todos (${rows.length})`;
+    $$('#dist-table th[data-key] button').forEach(b => b.addEventListener('click', () => {
+      const k = b.parentElement.dataset.key;
+      table.dir = table.key === k ? -table.dir : (['name', 'prov', 'dep'].includes(k) ? 1 : -1);
+      table.key = k; renderTable();
+    }));
+    renderTable();
+  }
+  function renderTable() {
+    const { key, dir } = table;
+    const rows = A.tableRows.slice().sort((a, b) => {
+      const x = a[key], y = b[key];
+      if (typeof x === 'string' || typeof y === 'string') return dir * String(x || '').localeCompare(String(y || ''), 'es');
+      return dir * ((+x || 0) - (+y || 0));
+    });
+    $$('#dist-table th[data-key]').forEach(th => { if (th.dataset.key === key) th.setAttribute('aria-sort', dir > 0 ? 'ascending' : 'descending'); else th.removeAttribute('aria-sort'); });
+    const shown = table.all ? rows : rows.slice(0, 25);
+    $('#dist-table tbody').innerHTML = shown.map((p, i) => `<tr><td>${esc(tc(p.name))}</td><td>${esc(tc(p.prov))}</td><td>${esc(tc(p.dep))}</td><td>${n0(p.p1)}</td><td>${n0(p.p2)}</td><td>${n0(p.p5)}</td><td>${n0(p.p10)}</td><td>${n0(p.b5)}</td><td>${n0(p.hot7)}</td><td>${p._bbox ? `<button class="go" type="button" data-i="${i}">Ver en el mapa</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="10">No hay distritos con personas a menos de 10 km de un incendio activo.</td></tr>';
+    $$('#dist-table .go').forEach(b => b.addEventListener('click', () => {
+      const p = shown[+b.dataset.i];
+      $('#explorador').scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'start' });
+      focusDistrict(p);
+    }));
+  }
+  function parseCSVRows(csv) {
+    if (!csv) return [];
+    const lines = csv.trim().split(/\r?\n/), head = lines.shift().split(',');
+    return lines.map(l => {
+      const v = l.split(','), o = Object.fromEntries(head.map((h, i) => [h, v[i]]));
+      return { id: o.id, name: o.district, prov: o.province, dep: o.department, p1: +o.people_1km, p2: +o.people_2km, p5: +o.people_5km, p10: +o.people_10km, b5: +o.buildings_5km, hot7: +o.hotspots_7d };
+    });
+  }
+  function wireCopy() {
+    const btn = $('#copy-csv'), status = $('#copy-status'), ta = $('#csv-fallback');
+    if (!A.csv) { btn.hidden = true; return; }
+    btn.addEventListener('click', () => {
+      const fallback = () => { ta.value = A.csv; ta.hidden = false; ta.focus(); ta.select(); status.textContent = 'Selecciona el texto y cópialo con Ctrl+C.'; };
+      try {
+        navigator.clipboard.writeText(A.csv).then(() => { status.textContent = 'Tabla copiada. Pégala en una hoja de cálculo.'; }, fallback);
+      } catch (e) { fallback(); }
+    });
+  }
+
+  // ---------- Boot ----------
+  async function boot() {
+    const { D, missing } = await load();
+    prepare(D);
+    if (missing.length) {
+      const n = $('#notice');
+      n.textContent = `Faltan archivos de datos: ${missing.join(', ')}. Ejecuta el pipeline con «uv run python -m pipeline.run_all».`;
+      n.hidden = false;
+    }
+    fillText();
+    buildSpark();
+    replay.T = REDUCED ? A.cutH : 0;
+    updateHUD();
+    updateReplayButton();
+
+    if (!window.deck) { const n = $('#notice'); n.textContent = 'No se pudo cargar la librería del mapa. Revisa tu conexión y recarga la página.'; n.hidden = false; return; }
+    FILTER = new deck.DataFilterExtension({ filterSize: 1 });
+    try { await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); } catch (e) { /* fonts are optional */ }
+
+    const storyEl = $('#map-story');
+    storyDeck = new deck.Deck({
+      parent: storyEl,
+      initialViewState: viewFor('peru', storyEl, 'story'),
+      controller: { scrollZoom: false, dragPan: false, dragRotate: false, doubleClickZoom: false, touchZoom: false, touchRotate: false, keyboard: false, inertia: false },
+      touchAction: 'pan-y',
+      getTooltip: tooltip,
+      onViewStateChange: ({ viewState }) => { story.view = viewState; const s = $('#legend .scale'); if (s) s.outerHTML = scaleHTML(viewState); },
+      layers: []
+    });
+    story.view = viewFor('peru', storyEl, 'story');
+
+    const exEl = $('#map-explore');
+    setTimeMode(explore, '7d');
+    exploreView = viewFor('peru', exEl, 'explore');
+    exploreDeck = new deck.Deck({
+      parent: exEl,
+      initialViewState: exploreView,
+      controller: { scrollZoom: false, dragRotate: false, touchRotate: false, doubleClickZoom: true, keyboard: true },
+      getTooltip: tooltip,
+      onClick: info => {
+        if (!info.object || !info.layer) return;
+        if (info.layer.id.endsWith('urban')) showPick(`<h3>${esc(tc(info.object.district))}</h3><p>Posible fuente urbana o industrial. No entra en el cálculo de exposición.</p>`);
+        else if (info.layer.id.endsWith('fires')) showPick(pickFire(info.object));
+        else if (info.layer.id.endsWith('districts')) showPick(pickDistrict(info.object.properties));
+      },
+      onViewStateChange: ({ viewState }) => {
+        exploreView = viewState;
+        // Building footprints only make sense up close; hide them at regional zooms.
+        const show = viewState.zoom >= 10;
+        if (show !== explore.caseVisible) { explore.caseVisible = show; renderExplore(); }
+      },
+      layers: []
+    });
+
+    buildExplorerPanel();
+    buildTable();
+    wireCopy();
+
+    $$('[data-radius-group] button').forEach(b => b.addEventListener('click', () => setRadius(+b.dataset.r)));
+    $('#replay').addEventListener('click', () => {
+      if (replay.playing) { replay.playing = false; updateReplayButton(); return; }
+      if (story.step !== 0) $('.step[data-step="0"]').scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' });
+      startReplay(replay.T >= A.cutH);
+    });
+
+    setRadius(5);
+    // The active step is the last one whose top has crossed the middle of the screen. Measuring on every
+    // scroll and resize stays correct when the host frame resizes the page after load.
+    const stepEls = $$('.step');
+    const syncStep = () => {
+      const mid = innerHeight / 2;
+      let idx = 0;
+      for (const s of stepEls) if (s.getBoundingClientRect().top <= mid) idx = +s.dataset.step;
+      setStep(idx);
+    };
+    let ticking = false;
+    addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; syncStep(); }); } }, { passive: true });
+    syncStep();
+
+    let rt = 0;
+    addEventListener('resize', () => {
+      syncStep();
+      clearTimeout(rt);
+      rt = setTimeout(() => {
+        const cfg = STEPS[Math.max(0, story.step)];
+        storyDeck.setProps({ initialViewState: viewFor(cfg.view, storyEl, 'story') });
+      }, 200);
+    });
+  }
+
+  boot().catch(err => {
+    console.error(err);
+    const n = $('#notice');
+    n.textContent = `No se pudo construir el mapa: ${err.message}`;
+    n.hidden = false;
+  });
+})();
+</script>
