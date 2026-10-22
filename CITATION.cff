@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "Si usas este trabajo, cítalo con estos datos."
+type: software
+title: "¿A quién alcanza el fuego? Incendios en el Perú al 21 de octubre de 2026"
+abstract: >-
+  Focos de calor VIIRS de NASA FIRMS cruzados con WorldPop 2026 y Google
+  Open Buildings para estimar cuántas personas y edificaciones hay cerca de
+  los incendios activos en el Perú, por distrito y para radios de 1, 2, 5 y
+  10 km. Trabajo del curso Python Intermedio de la Diplomatura de
+  Especialización en Ciencia de Datos para las Ciencias Sociales y la
+  Gestión Pública 2026 (PUCP).
+authors:
+  - family-names: Norabuena
+    given-names: Rodrigo
+    affiliation: "Pontificia Universidad Católica del Perú"
+date-released: "2026-10-21"
+version: "1.0.0"
+repository-code: "https://github.com/rodnm/mapa-incendios-peru-2026"
+url: "https://github.com/rodnm/mapa-incendios-peru-2026"
+identifiers:
+  - type: url
+    value: "https://claude.ai/artifact/L7bWfwPE94wdHdTsXhLNcy"
+    description: "Dashboard interactivo"
+license:
+  - MIT
+  - CC-BY-4.0
+keywords:
+  - incendios forestales
+  - Perú
+  - NASA FIRMS
+  - WorldPop
+  - Google Open Buildings
+  - exposición de la población
