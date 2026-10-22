@@ -1,0 +1,1181 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Monitor de incendios en vivo</title>
+<meta name="description" content="Focos de calor VIIRS de NASA FIRMS en el Perú, actualizados cada 3 horas y cruzados con WorldPop 2026 y Google Open Buildings: incendios activos, personas y edificaciones cerca del fuego.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=Schibsted+Grotesk:wght@400..800&display=swap">
+<style>
+/* Live monitor. Same visual system as the 21 October story (web/index.html): paper and ink
+   tokens for light and dark, and an always-night map surface with the validated fire and
+   people colors. Mobile first: one column, sheets for details and layers; wider screens
+   get the layer panel beside the map. */
+:root {
+  --paper: #eef0f3;
+  --paper-2: #e2e6ec;
+  --sheet: #f6f7f9;
+  --ink: #141a26;
+  --ink-2: #5a6474;
+  --rule: #cfd5de;
+  --fire-ink: #a8430c;
+  --people-ink: #1a5f8c;
+  --fire-mark: #c4500f;
+  --people-mark: #1f6fa3;
+  --focus: #1a5f8c;
+  --warn-bg: #fbeee2;
+  --warn-ink: #7a2e05;
+  --warn-line: #e3a77a;
+  --scrim: rgba(7, 11, 20, 0.45);
+  --shadow: rgba(7, 11, 20, 0.18);
+  /* The map is always a night pass: these do not change with the theme. */
+  --night: #070b14;
+  --night-ink: #c9d2df;
+  --night-strong: #e9edf3;
+  --night-muted: #8b96a8;
+  --night-line: rgba(201, 210, 223, 0.16);
+  --night-panel: rgba(7, 11, 20, 0.88);
+  --night-hover: rgba(201, 210, 223, 0.12);
+  --fire: #e5661c;
+  --people: #2f97cf;
+  --ring: #ffe2c4;
+  --urban-ring: #8b96a8;
+  --flame: #ffb03b;
+  --ember: #7a2a14;
+  --zone-fill: rgba(47, 151, 207, 0.2);
+  --zone-line: #96cdeb;
+  --biv-base: #161d2b;
+  --outline: #c9d2df;
+  --th-0: #78140e; --th-1: #c42c16; --th-2: #e5661c; --th-3: #ffb03b; --th-4: #fff0cd;
+  --pop-0: rgba(29, 78, 137, 0.15); --pop-1: #1d4e89; --pop-2: #3fa7d6; --pop-3: #e0fbfc;
+  --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans: "Schibsted Grotesk", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --gutter-l: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  --tap: 44px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0c111c; --paper-2: #121a28; --sheet: #111827; --ink: #e9edf3; --ink-2: #98a3b3; --rule: #263042;
+    --fire-ink: #f08a4b; --people-ink: #6dbbe6; --fire-mark: #e5661c; --people-mark: #2f97cf; --focus: #6dbbe6;
+    --warn-bg: #2b1a0d; --warn-ink: #f6c39a; --warn-line: #7a4520; --scrim: rgba(0, 0, 0, 0.6); --shadow: rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0c111c; --paper-2: #121a28; --sheet: #111827; --ink: #e9edf3; --ink-2: #98a3b3; --rule: #263042;
+  --fire-ink: #f08a4b; --people-ink: #6dbbe6; --fire-mark: #e5661c; --people-mark: #2f97cf; --focus: #6dbbe6;
+  --warn-bg: #2b1a0d; --warn-ink: #f6c39a; --warn-line: #7a4520; --scrim: rgba(0, 0, 0, 0.6); --shadow: rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 1rem; line-height: 1.55; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 450; line-height: 1.1; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: var(--people-ink); text-underline-offset: 0.18em; }
+b, strong { font-weight: 700; }
+button, input, select, textarea { font: inherit; font-size: max(16px, 1rem); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+.num, b { font-variant-numeric: tabular-nums; }
+.fire-t { color: var(--fire-ink); }
+.people-t { color: var(--people-ink); }
+.small { font-size: 0.875rem; color: var(--ink-2); line-height: 1.5; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: var(--gutter-l); top: -4rem; z-index: 60; background: var(--paper); color: var(--ink); padding: 0.6rem 0.8rem; border-radius: 4px; }
+.skip:focus { top: calc(8px + env(safe-area-inset-top, 0px)); }
+.wrap { max-width: 74rem; margin-inline: auto; padding-left: var(--gutter-l); padding-right: var(--gutter-r); display: grid; gap: 1rem; }
+.wrap > *, .wrap * { min-width: 0; }
+.btn { font: 600 0.9375rem/1.2 var(--sans); color: var(--ink); background: transparent; border: 1px solid var(--ink-2); border-radius: 999px; min-height: var(--tap); padding: 0.5rem 1rem; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+.btn:hover { background: var(--paper-2); }
+.btn.solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* Header and freshness */
+.top { padding-top: calc(1.25rem + env(safe-area-inset-top, 0px)); padding-bottom: 1.25rem; border-bottom: 1px solid var(--rule); }
+.top h1 { font-size: clamp(2rem, 7vw, 3.25rem); font-weight: 400; letter-spacing: -0.015em; }
+.fresh { display: grid; gap: 0.35rem; }
+.badge { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 600; font-size: 1rem; font-variant-numeric: tabular-nums; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--people-mark); flex: none; }
+.badge[data-state="stale"] .dot, .badge[data-state="none"] .dot { background: var(--fire-mark); }
+.warn { background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line); border-radius: 6px; padding: 0.7rem 0.85rem; font-size: 0.9375rem; }
+.links { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; margin: 0; padding: 0; list-style: none; font-size: 0.9375rem; }
+.links a { display: inline-flex; align-items: center; min-height: var(--tap); }
+
+/* Section frame */
+.sec { padding-block: 1.75rem; border-bottom: 1px solid var(--rule); }
+.sec h2 { font-size: clamp(1.5rem, 5vw, 2.1rem); }
+.sec-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.75rem 1rem; }
+
+/* Radius control */
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; padding: 3px; gap: 2px; background: var(--paper); max-width: 100%; }
+.seg button { font: 600 0.9375rem/1 var(--sans); color: var(--ink-2); background: transparent; border: 0; border-radius: 999px; min-height: var(--tap); min-width: var(--tap); padding: 0 0.8rem; cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.radius-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.radius-row .lbl { font-weight: 700; font-size: 0.9375rem; }
+
+/* Key figures: one strip that scrolls inside itself on narrow screens */
+.kpis { list-style: none; margin: 0; padding: 0 0 0.25rem; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(8.75rem, 40%); gap: 0.6rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.kpi { scroll-snap-align: start; background: var(--paper-2); border-radius: 8px; padding: 0.8rem 0.9rem 0.85rem; display: grid; gap: 0.2rem; align-content: start; }
+.kpi .k-lbl { font-size: 0.8125rem; font-weight: 700; color: var(--ink-2); }
+.kpi .k-val { font-family: var(--serif); font-size: 2rem; font-weight: 500; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi .k-sub { font-size: 0.8125rem; color: var(--ink-2); line-height: 1.35; }
+
+/* Map */
+.map-layout { display: grid; gap: 0.75rem; }
+.map-frame { position: relative; height: 62vh; height: 62svh; min-height: 20rem; max-height: 40rem; border-radius: 8px; overflow: hidden; background: var(--night); touch-action: pan-x pan-y; }
+.map { position: absolute; inset: 0; }
+.ctl { position: absolute; z-index: 3; top: 10px; left: 10px; display: grid; gap: 6px; justify-items: start; }
+.ctl button, .layers-btn { min-width: var(--tap); height: var(--tap); font: 600 1.125rem/1 var(--sans); color: var(--night-ink); background: var(--night-panel); border: 1px solid var(--night-line); border-radius: 8px; cursor: pointer; padding: 0 0.7rem; }
+.ctl button.wide, .layers-btn { font-size: 0.875rem; }
+.ctl button:hover, .layers-btn:hover { background: var(--night-hover); }
+.layers-btn { position: absolute; z-index: 3; top: 10px; right: 10px; display: inline-flex; align-items: center; gap: 0.45rem; }
+.hint { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 32px); color: var(--night-strong); background: var(--night-panel); border: 1px solid var(--night-line); border-radius: 8px; padding: 0.7rem 0.9rem; font-size: 0.9375rem; font-weight: 600; text-align: center; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+.hint.on { opacity: 1; }
+.notice { position: absolute; z-index: 4; left: 10px; right: 10px; bottom: 10px; color: var(--night-ink); background: var(--night-panel); border: 1px solid var(--night-line); border-radius: 8px; padding: 0.7rem 0.85rem; font-size: 0.9375rem; }
+.legend { position: absolute; z-index: 2; left: 10px; bottom: 10px; max-width: 14rem; color: var(--night-ink); background: var(--night-panel); border: 1px solid var(--night-line); border-radius: 8px; padding: 0.6rem 0.75rem; font-size: 0.75rem; line-height: 1.35; display: grid; gap: 0.45rem; pointer-events: none; }
+.legend h3 { font-family: var(--sans); font-size: 0.75rem; font-weight: 700; }
+.legend .muted { color: var(--night-muted); }
+.ramp { height: 8px; border-radius: 4px; }
+.ramp-fire { background: linear-gradient(90deg, var(--th-0) 0%, var(--th-1) 30%, var(--th-2) 55%, var(--th-3) 78%, var(--th-4) 100%); }
+.ramp-pop { background: linear-gradient(90deg, var(--pop-0) 0%, var(--pop-1) 15%, var(--pop-2) 55%, var(--pop-3) 100%); }
+.ticks { display: flex; justify-content: space-between; color: var(--night-muted); font-variant-numeric: tabular-nums; }
+.biv { display: grid; grid-template-columns: auto auto; gap: 0.35rem; align-items: end; }
+.biv-grid { display: grid; grid-template-columns: repeat(3, 16px); grid-template-rows: repeat(3, 16px); gap: 2px; }
+.biv-grid i { display: block; border-radius: 2px; }
+.biv-y { writing-mode: vertical-rl; transform: rotate(180deg); color: var(--night-muted); justify-self: end; }
+.biv-x { grid-column: 2; color: var(--night-muted); }
+.attrib { position: absolute; z-index: 1; right: 10px; bottom: 6px; font-size: 0.6875rem; color: var(--night-muted); pointer-events: none; display: none; }
+
+/* Layer panel (a sheet on phones) */
+.layers { display: grid; gap: 0.25rem; align-content: start; }
+.layers fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 0; }
+.layers legend { font-weight: 700; font-size: 0.9375rem; padding: 0; margin-bottom: 0.25rem; }
+.check { display: flex; align-items: center; gap: 0.7rem; min-height: var(--tap); font-size: 0.9375rem; cursor: pointer; border-bottom: 1px solid var(--rule); }
+.check:last-child { border-bottom: 0; }
+.check input { width: 1.2rem; height: 1.2rem; accent-color: var(--ink); margin: 0; flex: none; }
+.sw { width: 14px; height: 14px; border-radius: 3px; flex: none; display: inline-block; }
+.sw-flame { background: var(--flame); }
+.sw-ember { background: var(--ember); }
+.sw-ring { border-radius: 50%; border: 2px solid var(--ring); background: var(--night); }
+.sw-urban { border-radius: 50%; border: 2px solid var(--urban-ring); background: var(--night); }
+.sw-zone { background: var(--zone-fill); border: 1px solid var(--zone-line); }
+.sw-pop { background: var(--people); }
+.sw-biv { background: linear-gradient(135deg, var(--fire), var(--people)); }
+.panel-note { margin-top: 0.5rem; }
+
+/* Sheets: bottom sheets on phones (details and layers), inline on wide screens */
+.scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); }
+.grab { display: none; width: 40px; height: 4px; border-radius: 2px; background: var(--rule); margin: 2px auto 6px; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.sheet-head h3 { font-family: var(--sans); font-size: 1rem; font-weight: 700; }
+.close { width: var(--tap); height: var(--tap); flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; line-height: 1; color: inherit; background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.close:hover { background: var(--paper-2); }
+.detail { display: grid; gap: 0.5rem; }
+.detail h3 { font-size: 1.35rem; }
+.detail dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.25rem 1rem; font-size: 0.9375rem; }
+.detail dt { color: var(--ink-2); }
+.detail dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.detail dd.sel, .detail dt.sel { color: var(--people-ink); font-weight: 700; }
+.detail .flag { font-size: 0.875rem; color: var(--ink-2); }
+
+@media (max-width: 899px) {
+  .layers, .detail { position: fixed; z-index: 45; left: 0; right: 0; bottom: 0; max-height: 82vh; max-height: 82svh; overflow-y: auto; overscroll-behavior: contain; background: var(--sheet); color: var(--ink); border-top: 1px solid var(--rule); border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px var(--shadow); padding: 0.4rem var(--gutter-r) calc(1rem + env(safe-area-inset-bottom, 0px)) var(--gutter-l); transform: translateY(105%); visibility: hidden; transition: transform 0.22s ease, visibility 0s linear 0.22s; }
+  .layers.open, .detail.open { transform: none; visibility: visible; transition: transform 0.22s ease, visibility 0s; }
+  .grab { display: block; }
+}
+@media (min-width: 900px) {
+  .map-layout { grid-template-columns: 16.5rem minmax(0, 1fr); align-items: start; }
+  .map-frame { height: 72vh; height: 72svh; max-height: 46rem; min-height: 30rem; touch-action: none; }
+  .layers-btn, .layers .close, .scrim { display: none !important; }
+  .detail { position: absolute; z-index: 5; right: 12px; bottom: 12px; width: 21rem; max-height: calc(100% - 24px); overflow-y: auto; color: var(--night-ink); background: var(--night-panel); border: 1px solid var(--night-line); border-radius: 8px; padding: 0.6rem 0.9rem 0.9rem; }
+  .detail h3 { color: var(--night-strong); }
+  .detail dt, .detail .flag { color: var(--night-muted); }
+  .detail dd.sel, .detail dt.sel { color: var(--zone-line); }
+  .detail .close:hover { background: var(--night-hover); }
+  .detail:not(.open) { display: none; }
+  .attrib { display: block; }
+  .kpis { grid-auto-flow: row; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; }
+}
+@media (pointer: coarse) {
+  .map-frame { touch-action: pan-x pan-y; }
+}
+
+/* Lists and tables */
+.cols { display: grid; gap: 2rem; }
+@media (min-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2.5rem; } }
+.col { display: grid; gap: 0.75rem; align-content: start; }
+.col h2 { font-size: clamp(1.35rem, 4.5vw, 1.75rem); }
+.fires { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
+.fires li { border-bottom: 1px solid var(--rule); }
+.fires button { width: 100%; min-height: var(--tap); text-align: left; font: inherit; color: var(--ink); background: transparent; border: 0; padding: 0.65rem 0.25rem; cursor: pointer; display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); column-gap: 0.65rem; row-gap: 0.2rem; }
+.fires button:hover { background: var(--paper-2); }
+.fires .prio { grid-row: span 3; font-family: var(--serif); font-size: 1.6rem; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--fire-ink); line-height: 1; padding-top: 0.1rem; }
+.fires .fl-name { font-weight: 700; font-size: 0.9375rem; }
+.fires .fl-meta { font-size: 0.8125rem; color: var(--ink-2); }
+.fires .pbar { height: 4px; border-radius: 2px; background: var(--rule); }
+.fires .pbar i { display: block; height: 100%; border-radius: 2px; background: var(--fire-mark); }
+.empty { padding: 0.9rem 0; color: var(--ink-2); font-size: 0.9375rem; }
+.table-wrap { overflow-x: auto; overscroll-behavior-x: contain; border-top: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+th, td { padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--rule); text-align: right; vertical-align: middle; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+th { font-weight: 700; font-size: 0.8125rem; color: var(--ink-2); vertical-align: bottom; }
+td .go { display: block; min-height: var(--tap); width: 100%; text-align: left; font: 700 0.9375rem/1.25 var(--sans); color: var(--people-ink); background: none; border: 0; padding: 0.45rem 0; cursor: pointer; }
+td .go .go-name { text-decoration: underline; text-underline-offset: 0.18em; }
+td .go .go-sub { display: block; font-weight: 500; font-size: 0.8125rem; color: var(--ink-2); }
+.more { justify-self: start; }
+
+/* History charts (two small single-measure charts, never one dual-axis chart) */
+.charts { display: grid; gap: 1.5rem; }
+@media (min-width: 760px) { .charts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.chart-box { display: grid; gap: 0.35rem; }
+.chart-box h3 { font-family: var(--sans); font-size: 0.9375rem; font-weight: 700; }
+.readout { font-size: 0.9375rem; min-height: 1.5em; font-variant-numeric: tabular-nums; }
+.plot { position: relative; touch-action: pan-y; border-radius: 4px; }
+.plot svg { display: block; width: 100%; height: 160px; overflow: visible; }
+.plot text { fill: var(--ink-2); font: 500 12px var(--sans); font-variant-numeric: tabular-nums; }
+.plot .grid { stroke: var(--rule); stroke-width: 1; }
+.plot .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.plot .people .line { stroke: var(--people-mark); }
+.plot .fire .line { stroke: var(--fire-mark); }
+.plot .people .pt { fill: var(--people-mark); }
+.plot .fire .pt { fill: var(--fire-mark); }
+.plot .pt { stroke: var(--paper); stroke-width: 2; }
+.plot .cursor { stroke: var(--ink-2); stroke-width: 1; }
+details.data summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; font-weight: 600; color: var(--people-ink); }
+
+/* About and footer */
+.prose { max-width: 42rem; display: grid; gap: 0.8rem; }
+.prose h3 { font-size: 1.3rem; margin-top: 0.6rem; }
+.prose ul { margin: 0; padding-left: 1.15rem; display: grid; gap: 0.35rem; }
+.formula { font-family: var(--serif); font-size: 1.0625rem; background: var(--paper-2); border-radius: 6px; padding: 0.8rem 1rem; overflow-wrap: anywhere; }
+footer { padding-top: 2.5rem; padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0px)); }
+.foot { gap: 2rem; align-items: start; }
+@media (min-width: 760px) { .foot { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2.5rem; } }
+.foot-col { display: grid; gap: 0.8rem; }
+.foot-name { font-family: var(--serif); font-size: 1.5rem; font-weight: 500; }
+.foot-h { font-family: var(--sans); font-size: 0.9375rem; font-weight: 700; }
+.cite-box { background: var(--paper-2); border-radius: 6px; padding: 0.9rem 1rem; display: grid; gap: 0.7rem; margin-top: 0.4rem; }
+#cite-text { font-size: 0.9375rem; overflow-wrap: anywhere; }
+.cite-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.credits { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.15rem; font-size: 0.875rem; }
+.credits dt { font-weight: 700; }
+.credits dd { margin: 0 0 0.5rem; color: var(--ink-2); }
+@media (min-width: 480px) { .credits { grid-template-columns: max-content minmax(0, 1fr); gap: 0.45rem 1rem; } .credits dd { margin: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+  .layers, .detail, .hint { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#mapa">Ir al mapa</a>
+
+<header class="top">
+  <div class="wrap">
+    <h1>Monitor de incendios en vivo</h1>
+    <div class="fresh">
+      <p class="badge" id="fresh-badge" data-state="none"><i class="dot" aria-hidden="true"></i><span id="fresh-text">Cargando los datos…</span></p>
+      <p class="small" id="fresh-thru"></p>
+      <p class="small">Se actualiza cada 3 horas. Los datos satelitales nuevos llegan sobre todo después de los pasos de las ~01:30 y ~13:30 (hora de Lima), más unas 3 horas de proceso. <span id="fresh-next"></span></p>
+      <p class="warn" id="stale" role="status" hidden></p>
+    </div>
+    <ul class="links">
+      <li><a href="historia/">Ver la historia del 21 de octubre</a></li>
+      <li><a href="https://claude.ai/artifact/L7bWfwPE94wdHdTsXhLNcy" target="_blank" rel="noopener">La historia en Claude</a></li>
+      <li><a href="https://github.com/rodnm/mapa-incendios-peru-2026" target="_blank" rel="noopener">Código y datos</a></li>
+      <li><a href="https://github.com/rodnm/mapa-incendios-peru-2026/releases/tag/v1.0.0" target="_blank" rel="noopener">Versión 1.0.0</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <section class="sec" id="cifras" aria-labelledby="cifras-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="cifras-title" class="sr">Cifras clave</h2>
+        <div class="radius-row">
+          <span class="lbl" id="radius-lbl">Distancia al incendio</span>
+          <div class="seg" role="radiogroup" aria-labelledby="radius-lbl" id="radius">
+            <button type="button" role="radio" aria-checked="false" data-r="1" tabindex="-1">1 km</button>
+            <button type="button" role="radio" aria-checked="false" data-r="2" tabindex="-1">2 km</button>
+            <button type="button" role="radio" aria-checked="true" data-r="5" tabindex="0">5 km</button>
+            <button type="button" role="radio" aria-checked="false" data-r="10" tabindex="-1">10 km</button>
+          </div>
+        </div>
+      </div>
+      <ul class="kpis" id="kpis" aria-live="polite">
+        <li class="kpi"><span class="k-lbl">Focos en 24 horas</span><span class="k-val fire-t" id="k-24h">n. d.</span><span class="k-sub" id="k-7d">&nbsp;</span></li>
+        <li class="kpi"><span class="k-lbl">Incendios activos</span><span class="k-val" id="k-fires">n. d.</span><span class="k-sub" id="k-big">de vegetación</span></li>
+        <li class="kpi"><span class="k-lbl">Personas a <span class="r-km">5</span> km</span><span class="k-val people-t" id="k-people">n. d.</span><span class="k-sub" id="k-people-sub">WorldPop 2026</span></li>
+        <li class="kpi"><span class="k-lbl">Edificaciones a <span class="r-km">5</span> km</span><span class="k-val" id="k-buildings">n. d.</span><span class="k-sub">Google Open Buildings</span></li>
+        <li class="kpi"><span class="k-lbl">Excluidos del cálculo</span><span class="k-val" id="k-flag">n. d.</span><span class="k-sub" id="k-flag-sub">urbanos o de fuente fija</span></li>
+      </ul>
+      <p class="small" id="k-window"></p>
+    </div>
+  </section>
+
+  <section class="sec" id="mapa" aria-labelledby="mapa-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="mapa-title">Mapa</h2>
+        <p class="small" id="map-help">Toca un incendio o un distrito para ver sus cifras.</p>
+      </div>
+      <div class="map-layout">
+        <div class="layers" id="layers" aria-labelledby="layers-title">
+          <div class="grab" aria-hidden="true"></div>
+          <div class="sheet-head"><h3 id="layers-title">Capas</h3><button class="close" type="button" aria-label="Cerrar las capas" data-close>×</button></div>
+          <fieldset>
+            <legend class="sr">Capas del mapa</legend>
+            <label class="check"><input type="checkbox" data-layer="flames" checked><i class="sw sw-flame"></i><span>Focos de las últimas 24 horas</span></label>
+            <label class="check"><input type="checkbox" data-layer="embers" checked><i class="sw sw-ember"></i><span>Focos de los últimos 7 días</span></label>
+            <label class="check"><input type="checkbox" data-layer="fires" checked><i class="sw sw-ring"></i><span>Incendios activos</span></label>
+            <label class="check"><input type="checkbox" data-layer="buffers"><i class="sw sw-zone"></i><span>Zona de exposición (<span class="r-km">5</span> km)</span></label>
+            <label class="check"><input type="checkbox" data-layer="pop"><i class="sw sw-pop"></i><span>Población (WorldPop 2026)</span></label>
+            <label class="check"><input type="checkbox" data-layer="districts"><i class="sw sw-biv"></i><span>Distritos: fuego y personas</span></label>
+          </fieldset>
+          <p class="small panel-note"><i class="sw sw-urban" style="vertical-align:-2px"></i> Los anillos grises son posibles fuentes urbanas o industriales: no entran en el cálculo.</p>
+        </div>
+        <div class="map-frame" id="map-frame">
+          <div class="map" id="map" role="region" aria-label="Mapa de focos de calor e incendios activos en el Perú"></div>
+          <div class="ctl">
+            <button type="button" id="zoom-in" aria-label="Acercar">+</button>
+            <button type="button" id="zoom-out" aria-label="Alejar">−</button>
+            <button type="button" class="wide" id="zoom-peru">Todo el Perú</button>
+          </div>
+          <button type="button" class="layers-btn" id="layers-btn" aria-controls="layers" aria-expanded="false">Capas</button>
+          <div class="legend" id="legend" hidden></div>
+          <p class="hint" id="hint" aria-hidden="true">Usa dos dedos para mover el mapa</p>
+          <p class="notice" id="map-notice" role="status" hidden></p>
+          <p class="attrib">Focos: NASA FIRMS. Población: WorldPop. Relieve: AWS Terrain Tiles.</p>
+          <div class="detail" id="detail" role="dialog" aria-labelledby="detail-title" hidden>
+            <div class="grab" aria-hidden="true"></div>
+            <div class="sheet-head"><span class="small" id="detail-kind"></span><button class="close" type="button" aria-label="Cerrar el detalle" data-close>×</button></div>
+            <div id="detail-body"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="listas" aria-label="Incendios y distritos">
+    <div class="wrap cols">
+      <div class="col">
+        <h2 id="fires-title">Incendios activos por prioridad</h2>
+        <p class="small">Prioridad de 0 a 100 según las personas a 5 km, la huella, la potencia radiativa y los focos de las últimas 24 horas.</p>
+        <ol class="fires" id="fire-list" aria-labelledby="fires-title"></ol>
+        <button class="btn more" type="button" id="fires-more" hidden></button>
+      </div>
+      <div class="col">
+        <h2 id="dist-title">Distritos con más personas cerca</h2>
+        <p class="small">Personas (WorldPop 2026) y edificaciones (Google Open Buildings) a menos de <span class="r-km">5</span> km de un incendio activo de vegetación.</p>
+        <div class="table-wrap">
+          <table aria-labelledby="dist-title">
+            <thead><tr><th scope="col">Distrito</th><th scope="col">Personas</th><th scope="col">Edificaciones</th><th scope="col">Focos en 7 días</th></tr></thead>
+            <tbody id="dist-body"></tbody>
+          </table>
+        </div>
+        <button class="btn more" type="button" id="dist-more" hidden></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="historial" aria-labelledby="hist-title">
+    <div class="wrap">
+      <h2 id="hist-title">Cómo cambian las cifras</h2>
+      <p class="small" id="hist-note">Cada punto es una actualización del monitor.</p>
+      <div class="charts">
+        <div class="chart-box">
+          <h3>Personas a 5 km de un incendio activo</h3>
+          <p class="readout" id="read-people" aria-live="polite"></p>
+          <div class="plot people" id="plot-people" tabindex="0" aria-describedby="read-people"></div>
+        </div>
+        <div class="chart-box">
+          <h3>Focos de calor en 24 horas</h3>
+          <p class="readout" id="read-fire" aria-live="polite"></p>
+          <div class="plot fire" id="plot-fire" tabindex="0" aria-describedby="read-fire"></div>
+        </div>
+      </div>
+      <details class="data" id="hist-data">
+        <summary>Ver los datos del historial</summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Actualización (hora de Lima)</th><th scope="col">Personas a 5 km</th><th scope="col">Focos en 24 h</th><th scope="col">Incendios activos</th></tr></thead>
+            <tbody id="hist-body"></tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="sec" id="acerca" aria-labelledby="acerca-title">
+    <div class="wrap">
+      <div class="prose">
+        <h2 id="acerca-title">Cómo se calcula</h2>
+        <p>Cada 3 horas se descargan los focos de calor VIIRS de NASA FIRMS de los últimos <span class="w-days">120</span> días y se repite, sin ajustes a mano, el método de <a href="historia/">la historia del 21 de octubre de 2026</a>:</p>
+        <ul>
+          <li>Se descartan los focos de confianza baja, los que están a menos de 3 km de volcanes activos y los píxeles que se repiten muchos días, como las quemas de gas.</li>
+          <li>Un incendio es un grupo de focos a menos de 1 km y 48 horas entre sí. Está activo si tuvo al menos un foco en las 24 horas previas a la actualización.</li>
+          <li>Se excluyen los incendios en zonas urbanas (5000 personas o más a 1 km, o 1500 habitantes por km²) y las fuentes fijas: dos focos o menos donde ya hubo detecciones a menos de 500 m al menos 30 días antes.</li>
+          <li>La exposición suma WorldPop 2026 y cuenta las edificaciones de Google Open Buildings dentro de 1, 2, 5 y 10 km de los focos de las últimas 48 horas de cada incendio activo de vegetación.</li>
+        </ul>
+        <p class="formula" id="formula">prioridad = 100 × (0,35·n(log(1 + personas a 5 km)) + 0,25·n(huella en ha) + 0,20·n(FRP total en 24 h) + 0,20·n(focos en 24 h))</p>
+        <h3>Diferencias con la historia</h3>
+        <p>La historia está congelada al 21 de octubre de 2026 a las 20:52 (hora de Lima) y cuenta la temporada desde el 1 de julio. Este monitor mueve el corte a la hora de cada actualización y usa una ventana móvil de <span class="w-days">120</span> días. No tiene caso de estudio.</p>
+        <h3>Limitaciones</h3>
+        <ul>
+          <li>Todo es automático. Las reglas que separan la vegetación de las fuentes urbanas o fijas son heurísticas y nadie las revisa antes de publicar.</li>
+          <li>Los datos casi en tiempo real (NRT) llegan unas 3 horas después de cada paso del satélite, y FIRMS los corrige durante los días siguientes.</li>
+          <li>GitHub puede retrasar las ejecuciones programadas varios minutos, o más en horas de mucha demanda. Si una actualización falla, queda publicada la anterior.</li>
+          <li>Un foco de calor no es un incendio confirmado. Las nubes y el bosque cerrado esconden el fuego, y un radio no es una zona de evacuación.</li>
+          <li>WorldPop es un modelo, no un censo, y Open Buildings cuenta edificaciones, no viviendas.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="fuentes">
+  <div class="wrap foot">
+    <div class="foot-col">
+      <p class="foot-name">Rodrigo Norabuena</p>
+      <p class="small">Trabajo del curso Python Intermedio, Diplomatura de Especialización en Ciencia de Datos para las Ciencias Sociales y la Gestión Pública 2026, Pontificia Universidad Católica del Perú (PUCP).</p>
+      <p class="small">Código y datos: <a href="https://github.com/rodnm/mapa-incendios-peru-2026" target="_blank" rel="noopener">github.com/rodnm/mapa-incendios-peru-2026</a>. El código tiene licencia MIT; los textos, figuras y datos derivados, <a href="https://creativecommons.org/licenses/by/4.0/deed.es" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
+      <div class="cite-box">
+        <h2 class="foot-h">Cómo citar este trabajo</h2>
+        <p id="cite-text">Norabuena, R. (2026). <i>¿A quién alcanza el fuego? Incendios en el Perú al 21 de octubre de 2026</i> [Software y conjunto de datos]. GitHub. https://github.com/rodnm/mapa-incendios-peru-2026</p>
+        <div class="cite-tools">
+          <button class="btn" type="button" id="copy-cite">Copiar la cita</button>
+          <span class="small" id="cite-status" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>
+    <div class="foot-col">
+      <h2 class="foot-h">Fuentes</h2>
+      <dl class="credits">
+        <dt>Focos de calor</dt>
+        <dd><a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener">NASA FIRMS</a>, VIIRS NRT de S-NPP, NOAA-20 y NOAA-21, de los últimos <span class="w-days">120</span> días (datos abiertos de la NASA).</dd>
+        <dt>Población</dt>
+        <dd><a href="https://hub.worldpop.org/" target="_blank" rel="noopener">WorldPop</a> R2025A, 2026, 100 m, ajustada a edificaciones (CC BY 4.0).</dd>
+        <dt>Edificaciones</dt>
+        <dd><a href="https://sites.research.google/gr/open-buildings/" target="_blank" rel="noopener">Google Open Buildings v3</a> con confianza de 0,75 o más (CC BY 4.0 u ODbL), vía el espejo de VIDA en Source Cooperative.</dd>
+        <dt>Límites distritales</dt>
+        <dd>INEI, 1873 distritos, vía el <a href="https://huggingface.co/datasets/aquiro1994/ds-python-up" target="_blank" rel="noopener">repositorio del curso en Hugging Face</a>.</dd>
+        <dt>Relieve</dt>
+        <dd><a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> de Mapzen en AWS (SRTM, GMTED2010 y ETOPO1).</dd>
+        <dt>Mapa</dt>
+        <dd>deck.gl (MIT) y topojson-client (ISC).</dd>
+      </dl>
+      <p class="small">Herramienta independiente hecha con datos abiertos. No reemplaza los reportes del COEN, INDECI, SERFOR ni SERNANP.</p>
+    </div>
+  </div>
+</footer>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<noscript><p class="wrap small">Este monitor necesita JavaScript para cargar los datos y el mapa.</p></noscript>
+
+<script src="https://unpkg.com/deck.gl@9.0.38/dist.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const mq = q => matchMedia(q);
+  const PHONE = mq('(max-width: 899px)');
+  const HOVER = mq('(hover: hover) and (pointer: fine)');
+  const REDUCED = mq('(prefers-reduced-motion: reduce)');
+  const TOUCH = mq('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+  const PERU = [-81.4, -18.4, -68.6, 0.0];
+  const HOUR = 3600e3;
+  const REFRESH_MS = 10 * 60e3;
+  const STALE_H = 12;
+  const RADII = [1, 2, 5, 10];
+  const LIST_N = 10;
+
+  // ---------- Formatting (as in the story: space-grouped thousands, decimal comma, Lima time) ----------
+  const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+  const nf1 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
+  const spaced = s => s.replace(/[  ]/g, ' ');
+  const n0 = v => (v == null || !isFinite(v)) ? 'n. d.' : spaced(nf0.format(Math.round(v)));
+  const n1 = v => (v == null || !isFinite(v)) ? 'n. d.' : spaced(nf1.format(v));
+  const compact = v => v >= 1e6 ? `${n1(v / 1e6)} M` : v >= 1e4 ? `${n0(v / 1e3)} mil` : n0(v);
+  const tz = { timeZone: 'America/Lima' };
+  const dFull = new Intl.DateTimeFormat('es-PE', { ...tz, day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const dDay = new Intl.DateTimeFormat('es-PE', { ...tz, day: 'numeric', month: 'long' });
+  const dShort = new Intl.DateTimeFormat('es-PE', { ...tz, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const dAxis = new Intl.DateTimeFormat('es-PE', { ...tz, day: 'numeric', month: 'short' });
+  const dTime = new Intl.DateTimeFormat('es-PE', { ...tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const fmt = (f, ms) => isFinite(ms) ? f.format(ms) : 'n. d.';
+  const SMALL_WORDS = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'e']);
+  const tc = s => (s || '').toLowerCase().replace(/\S+/g, (w, i) => (i > 0 && SMALL_WORDS.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1));
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  function ago(ms) {
+    const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    if (m < 60) return m <= 1 ? 'hace 1 min' : `hace ${m} min`;
+    const h = Math.floor(m / 60);
+    return h < 48 ? `hace ${h} h` : `hace ${Math.floor(h / 24)} días`;
+  }
+  // Next scheduled run of the workflow (cron "30 */3 * * *", UTC).
+  function nextRun(from) {
+    const d = new Date(from);
+    let t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), 30);
+    while (t <= from || new Date(t).getUTCHours() % 3 !== 0) t += HOUR;
+    return t;
+  }
+  const nextText = () => `La próxima actualización está programada para las ${dTime.format(nextRun(Date.now()))} (hora de Lima).`;
+
+  // ---------- Colors: every map color comes from a CSS token ----------
+  const css = getComputedStyle(document.documentElement);
+  function tok(name) {
+    const v = css.getPropertyValue(name).trim();
+    if (v.startsWith('#')) { const h = v.slice(1); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)).concat(255); }
+    const m = v.match(/rgba?\(([^)]+)\)/);
+    if (m) { const p = m[1].split(',').map(Number); return [p[0], p[1], p[2], Math.round((p[3] ?? 1) * 255)]; }
+    return [255, 0, 255, 255];
+  }
+  const C = {
+    fire: tok('--fire'), people: tok('--people'), base: tok('--biv-base'), ring: tok('--ring'), urban: tok('--urban-ring'),
+    zoneFill: tok('--zone-fill'), zoneLine: tok('--zone-line'), outline: tok('--outline'), strong: tok('--night-strong')
+  };
+  const THERMAL = [0, 0.3, 0.55, 0.78, 1].map((p, i) => [p, tok(`--th-${i}`).slice(0, 3)]);
+  const alpha = (c, a) => [c[0], c[1], c[2], a];
+  const frpPos = frp => clamp(Math.log10(Math.max(0, frp) + 1) / Math.log10(301), 0, 1);
+  function thermal(frp) {
+    const v = frpPos(frp);
+    for (let i = 1; i < THERMAL.length; i++) {
+      const [p1, c1] = THERMAL[i], [p0, c0] = THERMAL[i - 1];
+      if (v <= p1) { const k = (v - p0) / (p1 - p0); return c0.map((c, j) => Math.round(c + (c1[j] - c) * k)); }
+    }
+    return THERMAL[THERMAL.length - 1][1];
+  }
+  // Bivariate district cell: fire and people add like light, so the high-high corner turns white.
+  function biv(fc, pc) {
+    const f = [0, 0.5, 1][fc], p = [0, 0.5, 1][pc], k = 1 - Math.max(f, p);
+    return [0, 1, 2].map(i => Math.min(255, Math.round(C.base[i] * k + C.fire[i] * f + C.people[i] * p)));
+  }
+  const ADD = { blendColorOperation: 'add', blendColorSrcFactor: 'src-alpha', blendColorDstFactor: 'one', blendAlphaOperation: 'add', blendAlphaSrcFactor: 'one', blendAlphaDstFactor: 'one-minus-src-alpha', depthCompare: 'always' };
+  const TIP_STYLE = { backgroundColor: 'var(--night-panel)', color: 'var(--night-strong)', font: '500 13px/1.45 var(--sans)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--night-line)', maxWidth: '260px' };
+
+  // ---------- State ----------
+  const st = {
+    radius: 5, version: null, lastCheck: 0, A: null, missing: [],
+    layers: { flames: true, embers: true, fires: true, buffers: false, pop: false, districts: false },
+    selected: null, firesAll: false, distAll: false
+  };
+  let deckgl = null, view = null, imgs = null;
+
+  // ---------- Loading ----------
+  const bust = (path, v) => `${path}?v=${encodeURIComponent(v)}`;
+  async function getJSON(path, v) { const r = await fetch(bust(path, v)); if (!r.ok) throw new Error(`${path} (${r.status})`); return r.json(); }
+  async function getText(path, v) { const r = await fetch(bust(path, v)); if (!r.ok) throw new Error(`${path} (${r.status})`); return r.text(); }
+  const getImage = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(src)); im.src = src; });
+
+  async function loadSummary() {
+    const r = await fetch(`data/summary.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`data/summary.json (${r.status})`);
+    return r.json();
+  }
+
+  async function loadRest(summary) {
+    const v = summary.generated_at || String(Date.now());
+    const json = { hotspots: 'data/hotspots.json', fires: 'data/fires.json', topo: 'data/districts.topo.json', buffers: 'data/buffers.json' };
+    const text = { csv: 'data/exposure_by_district.csv', history: 'data/history.csv' };
+    const D = { summary }, missing = [];
+    const jobs = [
+      ...Object.entries(json).map(([k, p]) => getJSON(p, v).then(x => { D[k] = x; }, () => missing.push(p))),
+      ...Object.entries(text).map(([k, p]) => getText(p, v).then(x => { D[k] = x; }, () => missing.push(p)))
+    ];
+    if (!imgs) {
+      jobs.push(Promise.allSettled([getJSON('assets/relief.json', 1), getImage('assets/relief_dark.png'), getJSON('assets/population.json', 1), getImage('assets/population.png')])
+        .then(([rj, ri, pj, pi]) => {
+          imgs = {
+            relief: rj.status === 'fulfilled' && ri.status === 'fulfilled' ? { bounds: rj.value.bounds, img: ri.value } : null,
+            pop: pj.status === 'fulfilled' && pi.status === 'fulfilled' ? { bounds: pj.value.bounds, max: pj.value.max_density, img: pi.value } : null
+          };
+          if (!imgs.relief) missing.push('assets/relief_dark.png');
+          if (!imgs.pop) missing.push('assets/population.png');
+        }));
+    }
+    await Promise.all(jobs);
+    return { D, missing };
+  }
+
+  // ---------- Preparation ----------
+  function parseCSV(text) {
+    if (!text) return [];
+    const lines = text.trim().split(/\r?\n/);
+    const head = lines.shift().split(',');
+    return lines.filter(Boolean).map(l => { const v = l.split(','); return Object.fromEntries(head.map((h, i) => [h, v[i]])); });
+  }
+  function boundsOf(pts) {
+    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+    for (const [x, y] of pts) { if (x < w) w = x; if (x > e) e = x; if (y < s) s = y; if (y > n) n = y; }
+    return [w, s, e, n];
+  }
+  function bboxOf(g) {
+    const pts = [];
+    const walk = c => { if (typeof c[0] === 'number') pts.push(c); else c.forEach(walk); };
+    if (g && g.coordinates) walk(g.coordinates);
+    return pts.length ? boundsOf(pts) : null;
+  }
+  function binaryPoints(H, idx) {
+    const pos = new Float32Array(idx.length * 2), col = new Uint8Array(idx.length * 4);
+    idx.forEach((i, k) => {
+      pos[2 * k] = H.x[i]; pos[2 * k + 1] = H.y[i];
+      const c = thermal(H.frp ? H.frp[i] : 5);
+      col[4 * k] = c[0]; col[4 * k + 1] = c[1]; col[4 * k + 2] = c[2]; col[4 * k + 3] = 255;
+    });
+    return { length: idx.length, attributes: { getPosition: { value: pos, size: 2 }, getFillColor: { value: col, size: 4 } } };
+  }
+
+  function prepare(D) {
+    const A = { S: D.summary || {} };
+    A.cutMs = Date.parse(A.S.cutoff_utc || A.S.generated_at);
+    A.genMs = Date.parse(A.S.generated_at || A.S.cutoff_utc);
+    const H = D.hotspots;
+    if (H && H.x && H.x.length) {
+      const cutH = Math.floor((A.cutMs - Date.parse(H.t0)) / HOUR);
+      const d1 = [], d7 = [];
+      for (let i = 0; i < H.x.length; i++) {
+        const t = H.t[i];
+        if (t >= cutH - 168) d7.push(i);
+        if (t >= cutH - 24) d1.push(i);
+      }
+      A.h24 = binaryPoints(H, d1);
+      A.h7 = binaryPoints(H, d7);
+    }
+    const all = Array.isArray(D.fires) ? D.fires : [];
+    A.fires = all.filter(d => !d.urban).sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    A.urban = all.filter(d => d.urban);
+    A.fireById = new Map(all.map(d => [String(d.id), d]));
+    A.csv = parseCSV(D.csv);
+    A.csvById = new Map(A.csv.map(r => [String(r.id), r]));
+    if (D.topo && window.topojson) {
+      const obj = D.topo.objects.districts || Object.values(D.topo.objects)[0];
+      const fc = topojson.feature(D.topo, obj);
+      for (const f of fc.features) f.properties._bbox = bboxOf(f.geometry);
+      A.distFC = fc;
+      A.distById = new Map(fc.features.map(f => [String(f.properties.id), f.properties]));
+      A.depPaths = topojson.mesh(D.topo, obj, (a, b) => a !== b && a.properties.dep !== b.properties.dep).coordinates;
+      A.countryPaths = topojson.mesh(D.topo, obj, (a, b) => a === b).coordinates;
+    }
+    A.buffers = D.buffers ? Object.fromEntries(Object.entries(D.buffers).filter(([, g]) => g && g.type)
+      .map(([r, g]) => [r, { type: 'Feature', geometry: g, properties: {} }])) : {};
+    A.history = parseCSV(D.history).map(r => ({ t: Date.parse(r.generated_at), people: +r.people_5km, hot: +r.hotspots_24h, fires: +r.fires_active }))
+      .filter(r => isFinite(r.t)).sort((a, b) => a.t - b.t);
+    return A;
+  }
+
+  // Bivariate classes depend on the radius: fire = hotspots in 7 days, people = people within r km.
+  function classifyDistricts(A, r) {
+    if (!A.distFC) return;
+    const feats = A.distFC.features, key = `p${r}`;
+    const med = k => { const a = feats.map(f => +f.properties[k] || 0).filter(v => v > 0).sort((x, y) => x - y); return a.length ? a[Math.floor((a.length - 1) / 2)] : 0; };
+    A.breakFire = med('hot7'); A.breakPeople = med(key);
+    const cls = (v, b) => !(v > 0) ? 0 : (v <= b ? 1 : 2);
+    for (const f of feats) {
+      const p = f.properties, fc = cls(+p.hot7, A.breakFire), pc = cls(+p[key], A.breakPeople);
+      p._col = [...biv(fc, pc), (fc || pc) ? 220 : 90];
+    }
+  }
+
+  // ---------- Header, freshness and empty states ----------
+  function renderFresh() {
+    const A = st.A, badge = $('#fresh-badge'), stale = $('#stale');
+    if (!A || !isFinite(A.genMs)) {
+      badge.dataset.state = 'none';
+      set('fresh-text', 'Todavía no hay datos del monitor');
+      set('fresh-thru', '');
+      set('fresh-next', nextText());
+      stale.hidden = true;
+      return;
+    }
+    const old = Date.now() - A.genMs > STALE_H * HOUR;
+    badge.dataset.state = old ? 'stale' : 'ok';
+    set('fresh-text', `Datos al ${fmt(dFull, A.genMs)} (${ago(A.genMs)})`);
+    const thru = Date.parse(A.S.data_through);
+    set('fresh-thru', isFinite(thru) ? `Último paso satelital incluido: ${fmt(dFull, thru)}, hora de Lima.` : '');
+    set('fresh-next', nextText());
+    stale.hidden = !old;
+    if (old) stale.textContent = `Atención: estos datos tienen más de ${STALE_H} horas. La actualización automática pudo retrasarse o fallar; mientras tanto se muestra la última que pasó los controles de calidad. ${nextText()}`;
+  }
+
+  function showEmpty(reason) {
+    const msg = `Todavía no hay datos del monitor: ${reason}. ${nextText()}`;
+    const notice = $('#map-notice');
+    notice.textContent = msg; notice.hidden = false;
+    $('#fire-list').innerHTML = `<li class="empty">${esc(msg)}</li>`;
+    $('#dist-body').innerHTML = `<tr><td colspan="4" class="empty">${esc(msg)}</td></tr>`;
+    set('read-people', ''); set('read-fire', '');
+    $('#plot-people').innerHTML = ''; $('#plot-fire').innerHTML = '';
+    set('hist-note', msg);
+  }
+
+  function renderMissing() {
+    const notice = $('#map-notice'), m = st.missing;
+    if (!m.length) { notice.hidden = true; return; }
+    notice.textContent = `Faltan archivos de datos: ${m.join(', ')}. Se muestra lo que sí está disponible. ${nextText()}`;
+    notice.hidden = false;
+  }
+
+  // ---------- Key figures ----------
+  function renderKPIs() {
+    const S = st.A.S, E = (S.exposure || {})[String(st.radius)] || {}, U = S.urban_flagged || {};
+    set('k-24h', n0(S.hotspots_24h));
+    set('k-7d', `${n0(S.hotspots_7d)} en 7 días`);
+    set('k-fires', n0(S.fires_active));
+    set('k-big', S.fires_active_gt100ha != null ? `de vegetación; ${n0(S.fires_active_gt100ha)} con más de 100 ha de huella` : 'de vegetación');
+    set('k-people', n0(E.people));
+    set('k-people-sub', E.districts != null ? `WorldPop 2026, en ${n0(E.districts)} distritos` : 'WorldPop 2026');
+    set('k-buildings', n0(E.buildings));
+    set('k-flag', n0(U.fires));
+    set('k-flag-sub', U.fires != null ? `${n0(U.fires_urban)} urbanos y ${n0(U.fires_fixed)} de fuente fija` : 'urbanos o de fuente fija');
+    const days = S.window_days || 120;
+    $$('.w-days').forEach(el => { el.textContent = String(days); });
+    const ws = Date.parse(S.window_start);
+    set('k-window', `${n0(S.hotspots_season)} focos en la ventana de ${days} días${isFinite(ws) ? `, desde el ${dDay.format(ws)}` : ''}. Se excluyen ${n0(U.fires)} incendios urbanos o de fuente fija, que sumarían ${n0(U.people_5km)} personas más a 5 km.`);
+    if (S.priority_formula) set('formula', S.priority_formula);
+  }
+
+  // ---------- Map ----------
+  function viewFor(b, el) {
+    const w = el.clientWidth || 360, h = el.clientHeight || 400;
+    const pad = Math.min(40, Math.round(Math.min(w, h) * 0.08));
+    try {
+      const vp = new deck.WebMercatorViewport({ width: w, height: h }).fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: pad, maxZoom: 13 });
+      return { longitude: vp.longitude, latitude: vp.latitude, zoom: vp.zoom, pitch: 0, bearing: 0 };
+    } catch (e) {
+      return { longitude: (b[0] + b[2]) / 2, latitude: (b[1] + b[3]) / 2, zoom: 4.3, pitch: 0, bearing: 0 };
+    }
+  }
+  const moveTo = (v, ms) => {
+    if (!deckgl) return;
+    deckgl.setProps({ initialViewState: { ...v, transitionDuration: REDUCED.matches ? 0 : (ms || 900), transitionInterpolator: new deck.FlyToInterpolator({ speed: 1.8, maxDuration: 1800 }) } });
+  };
+  function flyBounds(b, minSpan = 0.08) {
+    let [w, s, e, n] = b;
+    if (e - w < minSpan) { const c = (w + e) / 2; w = c - minSpan / 2; e = c + minSpan / 2; }
+    if (n - s < minSpan) { const c = (s + n) / 2; s = c - minSpan / 2; n = c + minSpan / 2; }
+    moveTo(viewFor([w, s, e, n], $('#map')));
+  }
+
+  function buildLayers() {
+    const A = st.A, L = [], on = st.layers, r = st.radius;
+    if (!A) return L;
+    if (imgs && imgs.relief) L.push(new deck.BitmapLayer({ id: 'relief', image: imgs.relief.img, bounds: imgs.relief.bounds }));
+    if (imgs && imgs.pop && on.pop) L.push(new deck.BitmapLayer({ id: 'pop', image: imgs.pop.img, bounds: imgs.pop.bounds }));
+    if (A.distFC && on.districts) {
+      L.push(new deck.GeoJsonLayer({ id: 'districts', data: A.distFC, filled: true, stroked: true, getFillColor: f => f.properties._col, getLineColor: alpha(C.outline, 34), lineWidthUnits: 'pixels', getLineWidth: 0.5, pickable: true, autoHighlight: true, highlightColor: alpha(C.strong, 70), updateTriggers: { getFillColor: `${st.version}-${r}` } }));
+      if (A.depPaths) L.push(new deck.PathLayer({ id: 'deps', data: A.depPaths, getPath: d => d, getColor: alpha(C.outline, 110), widthUnits: 'pixels', getWidth: 1 }));
+    }
+    if (A.countryPaths) L.push(new deck.PathLayer({ id: 'country', data: A.countryPaths, getPath: d => d, getColor: alpha(C.outline, 120), widthUnits: 'pixels', getWidth: 1 }));
+    const zone = on.buffers && A.buffers[String(r)];
+    if (zone) L.push(new deck.GeoJsonLayer({ id: `buffers-${r}`, data: zone, filled: true, stroked: true, getFillColor: C.zoneFill, getLineColor: alpha(C.zoneLine, 220), lineWidthUnits: 'pixels', getLineWidth: 1 }));
+    if (A.h7 && on.embers) L.push(new deck.ScatterplotLayer({ id: 'embers', data: A.h7, radiusUnits: 'meters', getRadius: 187, radiusMinPixels: 1, opacity: 0.32, parameters: { depthCompare: 'always' } }));
+    if (A.h24 && on.flames) {
+      L.push(new deck.ScatterplotLayer({ id: 'halo', data: A.h24, radiusUnits: 'pixels', getRadius: 6, opacity: 0.1, parameters: ADD }));
+      L.push(new deck.ScatterplotLayer({ id: 'flames', data: A.h24, radiusUnits: 'meters', getRadius: 187, radiusMinPixels: 1.6, opacity: 0.95, parameters: ADD }));
+    }
+    if (on.fires && A.urban.length) {
+      L.push(new deck.ScatterplotLayer({ id: 'urban', data: A.urban, getPosition: d => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: 5, stroked: true, filled: true, getFillColor: [0, 0, 0, 1], getLineColor: alpha(C.urban, 220), lineWidthUnits: 'pixels', getLineWidth: 1.25, pickable: true, autoHighlight: true, highlightColor: alpha(C.outline, 60) }));
+    }
+    if (on.fires && A.fires.length) {
+      L.push(new deck.ScatterplotLayer({ id: 'fires', data: A.fires, getPosition: d => [d.lon, d.lat], radiusUnits: 'meters', getRadius: d => Math.sqrt(Math.max(d.footprint_ha || 0, 1) * 1e4 / Math.PI), radiusMinPixels: 6, stroked: true, filled: true, getFillColor: [0, 0, 0, 1], getLineColor: alpha(C.ring, 235), lineWidthUnits: 'pixels', getLineWidth: d => 1 + 2 * (d.priority || 0) / 100, pickable: true, autoHighlight: true, highlightColor: alpha(C.ring, 60) }));
+    }
+    const sel = st.selected && st.selected.kind === 'fire' ? A.fireById.get(String(st.selected.id)) : null;
+    if (sel) L.push(new deck.ScatterplotLayer({ id: 'selected', data: [sel], getPosition: d => [d.lon, d.lat], radiusUnits: 'pixels', getRadius: 14, stroked: true, filled: false, getLineColor: alpha(C.strong, 255), lineWidthUnits: 'pixels', getLineWidth: 2 }));
+    return L;
+  }
+  function renderMap() { if (deckgl) deckgl.setProps({ layers: buildLayers() }); renderLegend(); }
+
+  function renderLegend() {
+    const A = st.A, el = $('#legend'), on = st.layers;
+    let html = '';
+    if (A && on.districts && A.distFC) {
+      let cells = '';
+      for (let f = 2; f >= 0; f--) for (let p = 0; p <= 2; p++) cells += `<i style="background:rgb(${biv(f, p).join(',')})"></i>`;
+      html += `<h3>Fuego y personas por distrito</h3><div class="biv"><span class="biv-y">Más focos en 7 días</span><div class="biv-grid">${cells}</div><span class="biv-x">Más personas a ${st.radius} km</span></div><p class="muted">Tramo medio: hasta ${n0(A.breakFire)} focos y ${n0(A.breakPeople)} personas.</p>`;
+    }
+    if (imgs && imgs.pop && on.pop) html += `<h3>Personas por km²</h3><div class="ramp ramp-pop"></div><div class="ticks"><span>10</span><span>100</span><span>1000+</span></div>`;
+    if (on.flames || on.embers) html += `<h3>Potencia radiativa del foco</h3><div class="ramp ramp-fire"></div><div class="ticks"><span>1 MW</span><span>10</span><span>100+</span></div>`;
+    el.innerHTML = html;
+    el.hidden = !html || (PHONE.matches && !(on.districts || on.pop));
+  }
+
+  function tooltip({ object, layer }) {
+    if (!object || !layer) return null;
+    let html = null;
+    if (layer.id === 'urban') html = `<b>${esc(tc(object.district))}</b>, ${esc(tc(object.department))}<br>Posible fuente urbana o industrial.<br>No entra en el cálculo de exposición.`;
+    else if (layer.id === 'fires') html = `<b>Incendio en ${esc(tc(object.district))}</b><br>${esc(tc(object.province))}, ${esc(tc(object.department))}<br>Prioridad ${n0(object.priority)} de 100<br>${n0(object.n24)} focos en 24 h, huella de ${n0(object.footprint_ha)} ha<br>${n0(object.people && object.people[String(st.radius)])} personas a ${st.radius} km`;
+    else if (layer.id === 'districts') { const p = object.properties; html = `<b>${esc(tc(p.name))}</b><br>${esc(tc(p.prov))}, ${esc(tc(p.dep))}<br>${n0(p.hot7)} focos en 7 días<br>${n0(p[`p${st.radius}`])} personas a ${st.radius} km de un incendio activo`; }
+    return html ? { html, style: TIP_STYLE } : null;
+  }
+
+  // ---------- Detail sheet / card ----------
+  const dl = rows => `<dl>${rows.map(([k, v, sel]) => `<dt${sel ? ' class="sel"' : ''}>${k}</dt><dd${sel ? ' class="sel"' : ''}>${v}</dd>`).join('')}</dl>`;
+  function fireDetail(d) {
+    const r = st.radius;
+    if (d.urban) {
+      const why = d.flag_reason === 'fixed' ? 'una fuente fija o recurrente (pocos focos donde ya hubo detecciones un mes antes)' : 'una zona urbana';
+      return `<h3 id="detail-title">${esc(tc(d.district))}</h3><p class="flag">${esc(tc(d.province))}, ${esc(tc(d.department))}. Probablemente es ${why}, no fuego en vegetación, así que no entra en el cálculo de exposición.</p>${dl([['Focos en 24 h', n0(d.n24)], ['Último foco', esc(fmt(dShort, Date.parse(d.last_seen)))]])}`;
+    }
+    return `<h3 id="detail-title">Incendio en ${esc(tc(d.district))}</h3><p class="flag">${esc(tc(d.province))}, ${esc(tc(d.department))}</p>${dl([
+      ['Prioridad', `${n0(d.priority)} de 100`], ['Focos en 24 h', n0(d.n24)], ['Huella', `${n0(d.footprint_ha)} ha`],
+      ['Potencia en 24 h', `${n0(d.frp24)} MW`], ['Visto por primera vez', esc(fmt(dShort, Date.parse(d.first_seen)))], ['Último foco', esc(fmt(dShort, Date.parse(d.last_seen)))],
+      ...RADII.map(k => [`Personas a ${k} km`, n0(d.people && d.people[String(k)]), k === r]),
+      [`Edificaciones a ${r} km`, n0(d.buildings && d.buildings[String(r)]), true]
+    ])}`;
+  }
+  function districtDetail(p) {
+    const r = st.radius, row = st.A.csvById.get(String(p.id)) || {};
+    return `<h3 id="detail-title">${esc(tc(p.name))}</h3><p class="flag">${esc(tc(p.prov))}, ${esc(tc(p.dep))}</p>${dl([
+      ['Población 2026', n0(p.pop)], ['Focos en 7 días', n0(p.hot7)], [`Focos en ${st.A.S.window_days || 120} días`, n0(p.hot_season)],
+      ...RADII.map(k => [`Personas a ${k} km`, n0(p[`p${k}`]), k === r]),
+      [`Edificaciones a ${r} km`, n0(row[`buildings_${r}km`] != null ? +row[`buildings_${r}km`] : (r === 5 ? p.b5 : 0)), true]
+    ])}`;
+  }
+
+  // Sheets: on phones the detail and the layer panel slide up from the bottom; on wide
+  // screens the detail is a card inside the map and the panel sits beside it.
+  const sheet = { el: null, opener: null };
+  function openSheet(el, opener) {
+    if (sheet.el && sheet.el !== el) closeSheet(false);
+    sheet.el = el; sheet.opener = opener || document.activeElement;
+    el.hidden = false;
+    const phone = PHONE.matches;
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', String(phone));
+    if (phone) $('#scrim').hidden = false;
+    void el.offsetWidth; // flush the un-hidden state so the slide-up transition runs
+    el.classList.add('open');
+    if (phone) { const c = $('[data-close]', el); if (c) c.focus({ preventScroll: true }); }
+    if (el.id === 'layers') $('#layers-btn').setAttribute('aria-expanded', 'true');
+  }
+  function closeSheet(restoreFocus = true) {
+    const el = sheet.el;
+    if (!el) return;
+    el.classList.remove('open');
+    el.style.transform = '';
+    $('#scrim').hidden = true;
+    if (el.id === 'detail') {
+      const finish = () => { if (!el.classList.contains('open')) el.hidden = true; };
+      if (PHONE.matches && !REDUCED.matches) setTimeout(finish, 240); else finish();
+      if (st.selected) { st.selected = null; renderMap(); }
+    }
+    if (el.id === 'layers') { $('#layers-btn').setAttribute('aria-expanded', 'false'); el.removeAttribute('role'); el.removeAttribute('aria-modal'); }
+    const back = sheet.opener;
+    sheet.el = null; sheet.opener = null;
+    if (restoreFocus && back && document.contains(back) && PHONE.matches) back.focus({ preventScroll: true });
+  }
+  function swipeToClose(el) {
+    let y0 = null, dy = 0;
+    el.addEventListener('touchstart', e => {
+      if (!PHONE.matches || e.touches.length !== 1 || el.scrollTop > 0) { y0 = null; return; }
+      y0 = e.touches[0].clientY; dy = 0; el.style.transition = 'none';
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (y0 == null) return;
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      el.style.transform = dy ? `translateY(${dy}px)` : '';
+    }, { passive: true });
+    const end = () => {
+      if (y0 == null) return;
+      el.style.transition = ''; el.style.transform = '';
+      if (dy > 70) closeSheet();
+      y0 = null;
+    };
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+  }
+
+  function showDetail(kind, obj, opener) {
+    const body = $('#detail-body');
+    if (kind === 'fire') { body.innerHTML = fireDetail(obj); set('detail-kind', obj.urban ? 'Posible fuente urbana o fija' : 'Incendio activo'); st.selected = { kind, id: obj.id }; }
+    else { body.innerHTML = districtDetail(obj); set('detail-kind', 'Distrito'); st.selected = { kind, id: obj.id }; }
+    renderMap();
+    openSheet($('#detail'), opener);
+  }
+  function refreshDetail() {
+    if (!st.selected || !st.A) return;
+    const { kind, id } = st.selected;
+    const obj = kind === 'fire' ? st.A.fireById.get(String(id)) : st.A.distById && st.A.distById.get(String(id));
+    if (!obj) { closeSheet(false); return; }
+    $('#detail-body').innerHTML = kind === 'fire' ? fireDetail(obj) : districtDetail(obj);
+  }
+  function scrollToMap() {
+    const frame = $('#map-frame'), r = frame.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > innerHeight) frame.scrollIntoView({ behavior: REDUCED.matches ? 'auto' : 'smooth', block: PHONE.matches ? 'start' : 'center' });
+  }
+  function focusFire(d, opener) {
+    scrollToMap();
+    const k = 0.12;
+    flyBounds([d.lon - k, d.lat - k, d.lon + k, d.lat + k]);
+    showDetail('fire', d, opener);
+  }
+  function focusDistrict(p, opener) {
+    scrollToMap();
+    if (p._bbox) flyBounds(p._bbox);
+    showDetail('district', p, opener);
+  }
+
+  // ---------- Lists ----------
+  function renderFires() {
+    const A = st.A, r = st.radius, list = $('#fire-list'), more = $('#fires-more');
+    if (!A.fires.length) {
+      list.innerHTML = `<li class="empty">No hay incendios activos de vegetación: ningún foco fuera de zonas urbanas o fuentes fijas en las 24 horas previas a la actualización.</li>`;
+      more.hidden = true; return;
+    }
+    const shown = st.firesAll ? A.fires : A.fires.slice(0, LIST_N);
+    list.innerHTML = shown.map(d => `<li><button type="button" data-fire="${esc(d.id)}"><span class="prio">${n0(d.priority)}</span><span class="fl-name">${esc(tc(d.district))} <span class="small">(${esc(tc(d.department))})</span></span><span class="fl-meta">${n0(d.n24)} focos en 24 h · ${n0(d.footprint_ha)} ha · ${n0(d.people && d.people[String(r)])} personas a ${r} km</span><span class="pbar" aria-hidden="true"><i style="width:${clamp(d.priority || 0, 0, 100)}%"></i></span></button></li>`).join('');
+    more.hidden = A.fires.length <= LIST_N;
+    more.textContent = st.firesAll ? `Mostrar los primeros ${LIST_N}` : `Mostrar los ${n0(A.fires.length)} incendios`;
+  }
+  function renderDistricts() {
+    const A = st.A, r = st.radius, body = $('#dist-body'), more = $('#dist-more');
+    const kp = `people_${r}km`, kb = `buildings_${r}km`;
+    const rows = A.csv.filter(x => +x[kp] > 0).sort((a, b) => (+b[kp]) - (+a[kp]));
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="4" class="empty">${A.csv.length || A.S.exposure ? `Ningún distrito tiene personas a menos de ${r} km de un incendio activo de vegetación.` : 'Falta la tabla de distritos (data/exposure_by_district.csv).'}</td></tr>`;
+      more.hidden = true; return;
+    }
+    const shown = st.distAll ? rows : rows.slice(0, LIST_N);
+    body.innerHTML = shown.map(x => `<tr><td><button class="go" type="button" data-dist="${esc(x.id)}"><span class="go-name">${esc(tc(x.district))}</span><span class="go-sub">${esc(tc(x.province))}, ${esc(tc(x.department))}</span></button></td><td>${n0(+x[kp])}</td><td>${n0(+x[kb])}</td><td>${n0(+x.hotspots_7d)}</td></tr>`).join('');
+    more.hidden = rows.length <= LIST_N;
+    more.textContent = st.distAll ? `Mostrar los primeros ${LIST_N}` : `Mostrar los ${n0(rows.length)} distritos`;
+  }
+
+  // ---------- History: two small charts with a hover / touch / keyboard readout ----------
+  function niceMax(v) {
+    if (!(v > 0)) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(v))), m = v / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+  }
+  function drawChart(box, readout, rows, key, unit) {
+    const W = Math.max(260, Math.round(box.clientWidth || 320)), Hh = 160, ml = 46, mr = 14, mt = 10, mb = 24;
+    const pw = W - ml - mr, ph = Hh - mt - mb;
+    const t0 = rows[0].t, t1 = rows[rows.length - 1].t, span = t1 - t0;
+    const ymax = niceMax(Math.max(...rows.map(r => r[key])));
+    const x = t => rows.length === 1 || span === 0 ? ml + pw / 2 : ml + (t - t0) / span * pw;
+    const y = v => mt + ph - (v / ymax) * ph;
+    const grid = [0, ymax / 2, ymax].map(v => `<line class="grid" x1="${ml}" x2="${W - mr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${ml - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${esc(compact(v))}</text>`).join('');
+    const path = rows.map((r, i) => `${i ? 'L' : 'M'}${x(r.t).toFixed(1)},${y(r[key]).toFixed(1)}`).join('');
+    const dots = rows.length <= 40 ? rows.map(r => `<circle class="pt" cx="${x(r.t).toFixed(1)}" cy="${y(r[key]).toFixed(1)}" r="4"/>`).join('')
+      : `<circle class="pt" cx="${x(t1).toFixed(1)}" cy="${y(rows[rows.length - 1][key]).toFixed(1)}" r="4"/>`;
+    const xl = rows.length === 1 ? `<text x="${x(t0).toFixed(1)}" y="${Hh - 6}" text-anchor="middle">${esc(dShort.format(t0))}</text>`
+      : `<text x="${ml}" y="${Hh - 6}" text-anchor="start">${esc(dAxis.format(t0))}</text><text x="${W - mr}" y="${Hh - 6}" text-anchor="end">${esc(dShort.format(t1))}</text>`;
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="${esc(`${unit}: ${rows.length} actualizaciones; la última, ${n0(rows[rows.length - 1][key])}`)}">${grid}<path class="line" d="${path}"/>${dots}<line class="cursor" x1="0" x2="0" y1="${mt}" y2="${mt + ph}" visibility="hidden"/><circle class="pt" r="5" visibility="hidden" data-focus/>${xl}</svg>`;
+    const svg = $('svg', box), cur = $('.cursor', svg), fdot = $('[data-focus]', svg);
+    const label = i => `${dShort.format(rows[i].t)}: ${n0(rows[i][key])} ${unit}`;
+    const rest = () => { cur.setAttribute('visibility', 'hidden'); fdot.setAttribute('visibility', 'hidden'); readout.textContent = `Última: ${label(rows.length - 1)}`; };
+    let idx = rows.length - 1;
+    const show = i => {
+      idx = clamp(i, 0, rows.length - 1);
+      const cx = x(rows[idx].t), cy = y(rows[idx][key]);
+      cur.setAttribute('x1', cx); cur.setAttribute('x2', cx); cur.setAttribute('visibility', 'visible');
+      fdot.setAttribute('cx', cx); fdot.setAttribute('cy', cy); fdot.setAttribute('visibility', 'visible');
+      readout.textContent = label(idx);
+    };
+    const nearest = clientX => {
+      const r = svg.getBoundingClientRect(), px = (clientX - r.left) / r.width * W;
+      let best = 0, bd = Infinity;
+      rows.forEach((row, i) => { const d = Math.abs(x(row.t) - px); if (d < bd) { bd = d; best = i; } });
+      return best;
+    };
+    box.onpointermove = e => show(nearest(e.clientX));
+    box.onpointerdown = e => show(nearest(e.clientX));
+    box.onpointerleave = rest;
+    box.onkeydown = e => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); show(idx + (e.key === 'ArrowLeft' ? -1 : 1)); }
+      else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); show(e.key === 'Home' ? 0 : rows.length - 1); }
+    };
+    box.onfocus = () => show(idx);
+    box.onblur = rest;
+    rest();
+  }
+  function renderHistory() {
+    const rows = st.A.history, note = $('#hist-note');
+    const pp = $('#plot-people'), pf = $('#plot-fire');
+    if (!rows.length) {
+      pp.innerHTML = ''; pf.innerHTML = '';
+      set('read-people', ''); set('read-fire', '');
+      note.textContent = `Falta el historial (data/history.csv). ${nextText()}`;
+      $('#hist-data').hidden = true;
+      return;
+    }
+    note.textContent = rows.length === 1
+      ? 'El historial empieza con esta actualización: cada nueva actualización agrega un punto.'
+      : `Cada punto es una actualización del monitor (${n0(rows.length)} desde el ${dDay.format(rows[0].t)}).`;
+    drawChart(pp, $('#read-people'), rows, 'people', 'personas');
+    drawChart(pf, $('#read-fire'), rows, 'hot', 'focos');
+    $('#hist-data').hidden = false;
+    $('#hist-body').innerHTML = rows.slice(-30).reverse().map(r => `<tr><td>${esc(dShort.format(r.t))}</td><td>${n0(r.people)}</td><td>${n0(r.hot)}</td><td>${n0(r.fires)}</td></tr>`).join('');
+  }
+
+  // ---------- Radius ----------
+  function setRadius(r) {
+    st.radius = r;
+    $$('#radius button').forEach(b => { const on = +b.dataset.r === r; b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; });
+    $$('.r-km').forEach(el => { el.textContent = String(r); });
+    if (!st.A) return;
+    classifyDistricts(st.A, r);
+    renderKPIs(); renderFires(); renderDistricts(); renderMap(); refreshDetail();
+  }
+
+  // ---------- Apply a data version ----------
+  async function apply(summary, isUpdate) {
+    const { D, missing } = await loadRest(summary);
+    st.A = prepare(D);
+    st.missing = missing;
+    st.version = summary.generated_at || null;
+    classifyDistricts(st.A, st.radius);
+    renderFresh(); renderMissing(); renderKPIs(); renderFires(); renderDistricts(); renderHistory(); renderMap(); refreshDetail();
+    if (isUpdate) set('live-status', `Datos actualizados al ${fmt(dFull, st.A.genMs)}.`);
+  }
+
+  async function check() {
+    st.lastCheck = Date.now();
+    let summary;
+    try { summary = await loadSummary(); }
+    catch (e) {
+      if (!st.A) { renderFresh(); showEmpty('falta data/summary.json'); }
+      else renderFresh();
+      return;
+    }
+    if (!st.A || summary.generated_at !== st.version) await apply(summary, !!st.A);
+    else renderFresh();
+  }
+
+  // ---------- Map setup ----------
+  function initMap() {
+    if (!window.deck) {
+      const n = $('#map-notice');
+      n.textContent = 'No se pudo cargar la librería del mapa. Revisa tu conexión y recarga la página; las cifras y las listas siguen disponibles.';
+      n.hidden = false;
+      return;
+    }
+    const el = $('#map');
+    view = viewFor(PERU, el);
+    deckgl = new deck.Deck({
+      parent: el,
+      initialViewState: view,
+      // No wheel zoom (it would trap the page scroll); drag pans on desktop. On touch screens
+      // one finger scrolls the page and two fingers pan and zoom the map.
+      controller: { scrollZoom: false, dragPan: true, dragRotate: false, touchRotate: false, touchZoom: true, doubleClickZoom: true, keyboard: true },
+      touchAction: TOUCH ? 'pan-x pan-y' : 'none',
+      getTooltip: info => HOVER.matches ? tooltip(info) : null,
+      onClick: info => {
+        if (!info.object || !info.layer) return;
+        if (info.layer.id === 'fires' || info.layer.id === 'urban') showDetail('fire', info.object, el);
+        else if (info.layer.id === 'districts') showDetail('district', info.object.properties, el);
+      },
+      onViewStateChange: ({ viewState }) => { view = viewState; },
+      layers: []
+    });
+    if (TOUCH) {
+      let start = null, timer = 0;
+      const hint = $('#hint');
+      el.addEventListener('touchstart', e => { start = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
+      el.addEventListener('touchmove', e => {
+        if (e.touches.length > 1) { e.preventDefault(); start = null; return; } // two fingers: the map, not the page
+        if (start && Math.hypot(e.touches[0].clientX - start[0], e.touches[0].clientY - start[1]) > 12) {
+          start = null;
+          hint.classList.add('on');
+          clearTimeout(timer);
+          timer = setTimeout(() => hint.classList.remove('on'), 1600);
+        }
+      }, { passive: false });
+      set('map-help', 'Toca un incendio o un distrito para ver sus cifras. Usa dos dedos para mover el mapa.');
+    } else {
+      set('map-help', 'Haz clic en un incendio o un distrito para ver sus cifras. Arrastra para mover el mapa y usa + y − para acercarte.');
+    }
+    const zoomBy = dz => { if (deckgl && view) deckgl.setProps({ initialViewState: { ...view, zoom: clamp(view.zoom + dz, 3, 16), transitionDuration: REDUCED.matches ? 0 : 250 } }); };
+    $('#zoom-in').addEventListener('click', () => zoomBy(1));
+    $('#zoom-out').addEventListener('click', () => zoomBy(-1));
+    $('#zoom-peru').addEventListener('click', () => moveTo(viewFor(PERU, el), 900));
+  }
+
+  function wireUI() {
+    const group = $('#radius');
+    $$('button', group).forEach(b => b.addEventListener('click', () => setRadius(+b.dataset.r)));
+    group.addEventListener('keydown', e => {
+      const i = RADII.indexOf(st.radius);
+      let j = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') j = Math.min(RADII.length - 1, i + 1);
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') j = Math.max(0, i - 1);
+      if (j == null) return;
+      e.preventDefault(); setRadius(RADII[j]); $(`button[data-r="${RADII[j]}"]`, group).focus();
+    });
+    $$('#layers input[data-layer]').forEach(cb => cb.addEventListener('change', () => { st.layers[cb.dataset.layer] = cb.checked; renderMap(); }));
+    $('#layers-btn').addEventListener('click', e => openSheet($('#layers'), e.currentTarget));
+    $$('[data-close]').forEach(b => b.addEventListener('click', () => closeSheet()));
+    $('#scrim').addEventListener('click', () => closeSheet());
+    addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.el) closeSheet(); });
+    swipeToClose($('#detail')); swipeToClose($('#layers'));
+    PHONE.addEventListener('change', () => {
+      // Leaving or entering the phone layout: drop sheet state so nothing stays half open.
+      if (sheet.el && sheet.el.id === 'layers') closeSheet(false);
+      $('#scrim').hidden = true;
+      if (sheet.el) sheet.el.setAttribute('aria-modal', String(PHONE.matches));
+      renderLegend();
+    });
+    $('#fire-list').addEventListener('click', e => { const b = e.target.closest('[data-fire]'); if (b) { const d = st.A.fireById.get(b.dataset.fire); if (d) focusFire(d, b); } });
+    $('#dist-body').addEventListener('click', e => {
+      const b = e.target.closest('[data-dist]');
+      if (!b || !st.A) return;
+      const p = st.A.distById && st.A.distById.get(b.dataset.dist);
+      if (p) focusDistrict(p, b);
+    });
+    $('#fires-more').addEventListener('click', () => { st.firesAll = !st.firesAll; renderFires(); });
+    $('#dist-more').addEventListener('click', () => { st.distAll = !st.distAll; renderDistricts(); });
+    let rt = 0;
+    addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (st.A) renderHistory(); }, 200); });
+
+    const btn = $('#copy-cite'), status = $('#cite-status'), src = $('#cite-text');
+    btn.addEventListener('click', () => {
+      const text = src.textContent.replace(/\s+/g, ' ').trim();
+      const fallback = () => {
+        const range = document.createRange();
+        range.selectNodeContents(src);
+        const sel = getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+        status.textContent = 'Cita seleccionada. Cópiala con Ctrl+C.';
+      };
+      try { navigator.clipboard.writeText(text).then(() => { status.textContent = 'Cita copiada.'; }, fallback); }
+      catch (e) { fallback(); }
+    });
+  }
+
+  // ---------- Boot ----------
+  async function boot() {
+    const live = document.createElement('p');
+    live.id = 'live-status'; live.className = 'sr'; live.setAttribute('aria-live', 'polite');
+    document.body.appendChild(live);
+    wireUI();
+    try { await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1200))]); } catch (e) { /* fonts are optional */ }
+    initMap();
+    await check();
+    setInterval(check, REFRESH_MS);
+    setInterval(renderFresh, 60e3);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - st.lastCheck > REFRESH_MS) check(); });
+  }
+
+  boot().catch(err => {
+    console.error(err);
+    const n = $('#map-notice');
+    n.textContent = `No se pudo construir el monitor: ${err.message}`;
+    n.hidden = false;
+  });
+})();
+</script>
+</body>
+</html>
