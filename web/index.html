@@ -136,7 +136,7 @@ b, strong { font-weight: 700; }
 
 @media (max-width: 759px) {
   .step { align-items: flex-end; padding-block: 8vh 5vh; }
-  .step:first-child { align-items: flex-end; padding-top: calc(72px + env(safe-area-inset-top, 0px)); }
+  .step:first-child { align-items: flex-end; padding-top: calc(72px + env(safe-area-inset-top, 0px)); padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
   .card, .card.hero { width: 100%; }
   .card { padding: 1rem 1.05rem 1.1rem; gap: 0.6rem; font-size: 0.9375rem; }
   .card h2 { font-size: 1.45rem; }
@@ -184,7 +184,18 @@ b, strong { font-weight: 700; }
   .card .extra { display: none; }
   .card.open .extra { display: block; }
   .card.open .key.extra { display: flex; }
+  .card:not(.open) #spark { display: none; }
   .more { display: inline-flex; justify-self: start; }
+  /* Compact hero: title, date and count on one line, then the actions, so the map shows above it. */
+  .hero .hud { padding-top: 0.6rem; gap: 0.4rem; }
+  .hero .hud-row { flex-wrap: nowrap; gap: 0.75rem; }
+  .hud-date { font-size: 1.25rem; white-space: nowrap; }
+  .hud-count { font-size: 0.875rem; text-align: right; }
+  .hud-count b { font-size: 1rem; }
+  .hud-actions { justify-content: flex-start; gap: 0.5rem; flex-wrap: nowrap; }
+  .hud-actions .btn { font-size: 0.8125rem; padding-inline: 0.75rem; white-space: nowrap; }
+  .card.open .hud-actions { flex-wrap: wrap; }
+  .card.open #spark-read { flex-basis: 100%; }
 }
 
 /* Touch screens get 44 px targets. */
@@ -290,20 +301,20 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
       <article class="step" data-step="0">
         <div class="card hero">
           <h1>¿A quién alcanza el fuego?</h1>
-          <p class="lede">Entre el 1 de julio y el <span id="k-cut-day">21 de octubre</span>, los satélites VIIRS detectaron <b class="fire-t" id="k-season">miles de</b> focos de calor en el Perú. Este relato cruza ese fuego con dónde vive la gente y dónde están sus casas.</p>
+          <p class="lede extra">Entre el 1 de julio y el <span id="k-cut-day">21 de octubre</span>, los satélites VIIRS detectaron <b class="fire-t" id="k-season">miles de</b> focos de calor en el Perú. Este relato cruza ese fuego con dónde vive la gente y dónde están sus casas.</p>
           <div class="hud">
             <div class="hud-row">
               <span class="hud-date" id="hud-date">1 de julio</span>
               <span class="hud-count"><b id="hud-count">0</b> focos acumulados</span>
             </div>
-            <svg id="spark" viewBox="0 0 320 56" preserveAspectRatio="none" role="img" aria-label="Focos de calor por día desde el 1 de julio"></svg>
+            <svg id="spark" class="extra" viewBox="0 0 320 56" preserveAspectRatio="none" role="img" aria-label="Focos de calor por día desde el 1 de julio"></svg>
             <div class="hud-actions">
-              <span class="small" id="spark-read">Focos por día</span>
+              <span class="small extra" id="spark-read">Focos por día</span>
               <button class="btn" id="replay" type="button">Reproducir la temporada</button>
             </div>
           </div>
-          <p class="small">Datos al <span id="k-cutoff">21 de octubre de 2026</span>, hora de Lima. Satélites S-NPP, NOAA-20 y NOAA-21.</p>
-          <p class="small"><a href="https://rodnm.github.io/mapa-incendios-peru-2026/" target="_blank" rel="noopener">Ver el monitor en vivo</a>, que se actualiza cada 3 horas.</p>
+          <p class="small extra">Datos al <span id="k-cutoff">21 de octubre de 2026</span>, hora de Lima. Satélites S-NPP, NOAA-20 y NOAA-21.</p>
+          <p class="small extra"><a href="https://rodnm.github.io/mapa-incendios-peru-2026/" target="_blank" rel="noopener">Ver el monitor en vivo</a>, que se actualiza cada 3 horas.</p>
         </div>
       </article>
 
@@ -332,7 +343,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
         <div class="card">
           <h2>Donde se cruzan</h2>
           <p>Cada distrito tiene dos valores: cuántos focos tuvo en 7 días y cuántas personas viven a menos de 5 km de un incendio activo. Los colores se suman como la luz. El naranja es fuego, el azul es gente, y donde los dos son altos el distrito se vuelve blanco.</p>
-          <div>
+          <div class="extra">
             <p class="small">Distritos con más personas a menos de 5 km:</p>
             <ol class="list" id="top-districts"></ol>
           </div>
@@ -812,7 +823,12 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     let pad;
     if (mode === 'story') {
       if (w >= 760) { const card = Math.min(28 * 16, w * 0.42); pad = { left: card + 48, right: 250, top: 36, bottom: 36 }; }
-      else pad = { left: 12, right: 12, top: 150, bottom: Math.round(h * 0.46) };
+      else {
+        // On phones the active card sits at the bottom; frame the map in the space left above it.
+        const card = story.step >= 0 && stepEls[story.step] ? stepEls[story.step].querySelector('.card') : null;
+        const cardH = card ? card.offsetHeight : h * 0.42;
+        pad = { left: 12, right: 12, top: story.step === 0 ? 80 : 150, bottom: Math.round(clamp(cardH + 0.05 * h + 16, h * 0.28, h * 0.62)) };
+      }
     } else pad = { left: 24, right: 24, top: 24, bottom: 24 };
     const sx = (pad.left + pad.right) / Math.max(1, w - 120), sy = (pad.top + pad.bottom) / Math.max(1, h - 120);
     if (sx > 1) { pad.left /= sx; pad.right /= sx; }
@@ -904,6 +920,13 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     renderLegend();
     if (i === 0 && !replay.played && !REDUCED && A.hot) startReplay(true);
     kick();
+  }
+
+  // Re-frame the current step, for example after a phone card folds or unfolds.
+  function refitStory() {
+    if (!storyDeck || story.step < 0) return;
+    story.view = viewFor(STEPS[story.step].view, $('#map-story'), 'story');
+    storyDeck.setProps({ initialViewState: fly(story.view, 900) });
   }
 
   function renderLegend() {
@@ -1335,8 +1358,10 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
         const open = card.classList.toggle('open');
         b.textContent = open ? 'Ocultar detalle' : 'Ver detalle';
         b.setAttribute('aria-expanded', String(open));
+        refitStory();
       });
-      card.appendChild(b);
+      // The hero keeps it next to "Reproducir la temporada"; other cards put it last.
+      ($('.hud-actions', card) || card).appendChild(b);
     });
   }
 
