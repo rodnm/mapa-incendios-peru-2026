@@ -13,8 +13,8 @@ authors:
   - family-names: Norabuena
     given-names: Rodrigo
     affiliation: "Pontificia Universidad Católica del Perú"
-date-released: "2026-10-21"
-version: "1.0.0"
+date-released: "2026-10-22"
+version: "1.1.0"
 repository-code: "https://github.com/rodnm/mapa-incendios-peru-2026"
 url: "https://github.com/rodnm/mapa-incendios-peru-2026"
 identifiers:
