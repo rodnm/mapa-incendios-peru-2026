@@ -251,6 +251,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
             </div>
           </div>
           <p class="small">Datos al <span id="k-cutoff">21 de octubre de 2026</span>, hora de Lima. Satélites S-NPP, NOAA-20 y NOAA-21.</p>
+          <p class="small"><a href="https://rodnm.github.io/mapa-incendios-peru-2026/" target="_blank" rel="noopener">Ver el monitor en vivo</a>, que se actualiza cada 3 horas.</p>
         </div>
       </article>
 
@@ -1194,9 +1195,14 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; syncStep(); }); } }, { passive: true });
     syncStep();
 
-    let rt = 0;
+    // Phone toolbars showing or hiding change only the height by a few dozen pixels; refitting the map then
+    // would jump the camera mid-flight, so only real resizes (width change or a large height change) refit it.
+    let rt = 0, lastW = innerWidth, lastH = innerHeight;
     addEventListener('resize', () => {
       syncStep();
+      const toolbarOnly = innerWidth === lastW && Math.abs(innerHeight - lastH) < 160;
+      if (toolbarOnly) return;
+      lastW = innerWidth; lastH = innerHeight;
       clearTimeout(rt);
       rt = setTimeout(() => {
         const cfg = STEPS[Math.max(0, story.step)];
