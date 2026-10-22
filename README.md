@@ -1,6 +1,6 @@
 # ¿A quién alcanza el fuego? Incendios en el Perú al 21 de octubre de 2026
 
-**Autor:** Rodrigo Norabuena. Curso Ciencia de Datos con Python, Universidad del Pacífico, 21 de octubre de 2026.
+**Autor:** Rodrigo Norabuena. Trabajo del curso Python Intermedio, Diplomatura de Especialización en Ciencia de Datos para las Ciencias Sociales y la Gestión Pública 2026, Pontificia Universidad Católica del Perú (PUCP). 21 de octubre de 2026.
 
 **Dashboard:** [¿A quién alcanza el fuego?](https://claude.ai/artifact/L7bWfwPE94wdHdTsXhLNcy), un relato con mapa que cruza los focos de calor con la población y las edificaciones.
 
@@ -89,3 +89,27 @@ uv run python -m http.server 8000 --directory web
 ```
 
 Usa deck.gl 9.0.38 y topojson-client 3.1.0 desde CDN.
+
+## Cómo citar
+
+Si usas este trabajo, cítalo así (APA 7):
+
+> Norabuena, R. (2026). *¿A quién alcanza el fuego? Incendios en el Perú al 21 de octubre de 2026* [Software y conjunto de datos]. GitHub. https://github.com/rodnm/mapa-incendios-peru-2026
+
+```bibtex
+@software{norabuena_2026_incendios,
+  author = {Norabuena, Rodrigo},
+  title  = {¿A quién alcanza el fuego? Incendios en el Perú al 21 de octubre de 2026},
+  year   = {2026},
+  url    = {https://github.com/rodnm/mapa-incendios-peru-2026},
+  note   = {Curso Python Intermedio, Diplomatura de Especialización en Ciencia de Datos para las Ciencias Sociales y la Gestión Pública 2026, Pontificia Universidad Católica del Perú}
+}
+```
+
+GitHub también ofrece la cita con el botón **Cite this repository**, que lee el archivo `CITATION.cff`.
+
+## Licencia
+
+- **Código** (`pipeline/`, `web/index.html`): [MIT](LICENSE).
+- **Textos, figuras y datos derivados** (este README, `outputs/`, `web/data/`, `web/assets/`): [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.es). Puedes reutilizarlos citando la autoría.
+- **Datos de terceros:** mantienen su propia licencia. WorldPop es CC BY 4.0, Google Open Buildings es CC BY 4.0 u ODbL y los focos de NASA FIRMS son datos abiertos de la NASA.

@@ -200,8 +200,23 @@ td .go { font: 600 0.8125rem var(--sans); color: var(--people-ink); background: 
 textarea.csv { width: 100%; min-height: 9rem; box-sizing: border-box; font: 0.8125rem/1.4 ui-monospace, Consolas, monospace; color: var(--ink); background: var(--paper-2); border: 1px solid var(--rule); border-radius: 6px; padding: 0.6rem; }
 
 .formula { font-family: var(--serif); font-size: 1.125rem; background: var(--paper-2); border-radius: 6px; padding: 0.8rem 1rem; overflow-x: auto; }
-footer { padding-block: 2rem 3rem; padding-left: var(--gutter-l); padding-right: var(--gutter-r); border-top: 1px solid var(--rule); }
-footer .wrap { gap: 0.5rem; }
+footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-right: var(--gutter-r); border-top: 1px solid var(--rule); }
+.foot { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+.foot-col { display: grid; gap: 0.8rem; min-width: 0; }
+.foot-name { font-family: var(--serif); font-size: 1.5rem; font-weight: 500; }
+.foot-h { font-family: var(--sans); font-size: 0.9375rem; font-weight: 700; }
+.cite-box { background: var(--paper-2); border-radius: 6px; padding: 0.9rem 1rem; display: grid; gap: 0.7rem; margin-top: 0.4rem; }
+#cite-text { font-size: 0.9375rem; overflow-wrap: anywhere; }
+.credits { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.45rem 1rem; font-size: 0.875rem; }
+.credits dt { font-weight: 700; }
+.credits dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 759px) {
+  .foot { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+}
+@media (max-width: 479px) {
+  .credits { grid-template-columns: minmax(0, 1fr); gap: 0.15rem; }
+  .credits dd { margin-bottom: 0.5rem; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
@@ -412,13 +427,7 @@ footer .wrap { gap: 0.5rem; }
         <p class="formula" id="m-formula">100 × (0,35·personas a 5 km + 0,25·huella + 0,20·potencia radiativa en 24 h + 0,20·focos en 24 h)</p>
 
         <h3>Fuentes</h3>
-        <ul>
-          <li><a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener">NASA FIRMS</a>: focos VIIRS NRT, del 1 de julio al corte.</li>
-          <li><a href="https://hub.worldpop.org/" target="_blank" rel="noopener">WorldPop</a>: población 2026, versión R2025A, 100 m, ajustada a edificaciones.</li>
-          <li><a href="https://sites.research.google/gr/open-buildings/" target="_blank" rel="noopener">Google Open Buildings v3</a>: edificaciones detectadas en imágenes satelitales.</li>
-          <li><a href="https://huggingface.co/datasets/aquiro1994/ds-python-up" target="_blank" rel="noopener">Límites distritales</a> del curso (1873 distritos, INEI).</li>
-          <li><a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">AWS Terrain Tiles</a>: relieve.</li>
-        </ul>
+        <p>Cada fuente, con su versión, fecha y licencia, está en los <a href="#fuentes">créditos al pie de la página</a>.</p>
 
         <h3>Limitaciones</h3>
         <ul>
@@ -435,10 +444,39 @@ footer .wrap { gap: 0.5rem; }
   </section>
 </main>
 
-<footer>
-  <div class="wrap">
-    <p class="small">Herramienta independiente hecha con datos abiertos. No reemplaza los reportes del COEN, INDECI, SERFOR ni SERNANP.</p>
-    <p class="small" id="repo-line" hidden>Código y datos: <a id="repo-link" href="#" target="_blank" rel="noopener">repositorio en GitHub</a>.</p>
+<footer id="fuentes">
+  <div class="wrap foot">
+    <div class="foot-col">
+      <p class="foot-name">Rodrigo Norabuena</p>
+      <p class="small">Trabajo del curso Python Intermedio, Diplomatura de Especialización en Ciencia de Datos para las Ciencias Sociales y la Gestión Pública 2026, Pontificia Universidad Católica del Perú (PUCP).</p>
+      <p class="small">Código y datos: <a href="https://github.com/rodnm/mapa-incendios-peru-2026" target="_blank" rel="noopener">github.com/rodnm/mapa-incendios-peru-2026</a>. El código tiene licencia MIT; los textos, figuras y datos derivados, <a href="https://creativecommons.org/licenses/by/4.0/deed.es" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
+      <div class="cite-box">
+        <h2 class="foot-h">Cómo citar este trabajo</h2>
+        <p id="cite-text">Norabuena, R. (2026). <i>¿A quién alcanza el fuego? Incendios en el Perú al 21 de octubre de 2026</i> [Software y conjunto de datos]. GitHub. https://github.com/rodnm/mapa-incendios-peru-2026</p>
+        <div class="table-tools">
+          <button class="btn" type="button" id="copy-cite">Copiar la cita</button>
+          <span class="small" id="cite-status" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>
+    <div class="foot-col">
+      <h2 class="foot-h">Fuentes</h2>
+      <dl class="credits">
+        <dt>Focos de calor</dt>
+        <dd><a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener">NASA FIRMS</a>, VIIRS NRT de S-NPP, NOAA-20 y NOAA-21, del 1 de julio al corte (datos abiertos de la NASA).</dd>
+        <dt>Población</dt>
+        <dd><a href="https://hub.worldpop.org/" target="_blank" rel="noopener">WorldPop</a> R2025A, 2026, 100 m, ajustada a edificaciones (CC BY 4.0).</dd>
+        <dt>Edificaciones</dt>
+        <dd><a href="https://sites.research.google/gr/open-buildings/" target="_blank" rel="noopener">Google Open Buildings v3</a> con confianza de 0,75 o más (CC BY 4.0 u ODbL), vía el espejo de VIDA en Source Cooperative.</dd>
+        <dt>Límites distritales</dt>
+        <dd>INEI, 1873 distritos, vía el <a href="https://huggingface.co/datasets/aquiro1994/ds-python-up" target="_blank" rel="noopener">repositorio del curso en Hugging Face</a>.</dd>
+        <dt>Relieve</dt>
+        <dd><a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> de Mapzen en AWS (SRTM, GMTED2010 y ETOPO1).</dd>
+        <dt>Mapa</dt>
+        <dd>deck.gl (MIT) y topojson-client (ISC).</dd>
+      </dl>
+      <p class="small">Herramienta independiente hecha con datos abiertos. No reemplaza los reportes del COEN, INDECI, SERFOR ni SERNANP.</p>
+    </div>
   </div>
 </footer>
 
@@ -447,8 +485,6 @@ footer .wrap { gap: 0.5rem; }
 <script>
 (() => {
   'use strict';
-
-  const REPO_URL = 'https://github.com/rodnm/mapa-incendios-peru-2026';
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -915,7 +951,24 @@ footer .wrap { gap: 0.5rem; }
     const rem = S.removed || {};
     set('m-low', n0(rem.low_conf)); set('m-volc', n0(rem.volcano)); set('m-pers', n0(rem.persistent));
     if (S.priority_formula) set('m-formula', S.priority_formula);
-    if (REPO_URL) { $('#repo-link').href = REPO_URL; $('#repo-line').hidden = false; }
+  }
+
+  function wireCite() {
+    const btn = $('#copy-cite'), status = $('#cite-status'), src = $('#cite-text');
+    if (!btn || !src) return;
+    btn.addEventListener('click', () => {
+      const text = src.textContent.replace(/\s+/g, ' ').trim();
+      const fallback = () => {
+        const range = document.createRange();
+        range.selectNodeContents(src);
+        const sel = getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+        status.textContent = 'Cita seleccionada. Cópiala con Ctrl+C.';
+      };
+      try {
+        navigator.clipboard.writeText(text).then(() => { status.textContent = 'Cita copiada.'; }, fallback);
+      } catch (e) { fallback(); }
+    });
   }
 
   function setRadius(r) {
@@ -1071,6 +1124,7 @@ footer .wrap { gap: 0.5rem; }
       n.hidden = false;
     }
     fillText();
+    wireCite();
     buildSpark();
     replay.T = REDUCED ? A.cutH : 0;
     updateHUD();
