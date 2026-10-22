@@ -1,0 +1,135 @@
+id,department,province,district,people_1km,people_2km,people_5km,people_10km,buildings_1km,buildings_2km,buildings_5km,buildings_10km,hotspots_7d
+160301,Loreto,Loreto,Nauta,0,3,28841,30286,0,1,8130,9134,12
+150119,Lima,Lima,Lurin,0,523,28424,72098,0,80,11809,38730,0
+110508,Ica,Pisco,Tupac Amaru Inca,74,234,19568,19872,78,224,8028,8143,1
+150126,Lima,Lima,Punta Hermosa,1047,4783,17471,18172,782,4613,16227,16946,2
+110507,Ica,Pisco,San Clemente,0,70,13629,27405,0,35,6216,14028,3
+190306,Pasco,Oxapampa,Puerto Bermudez,281,904,11418,15299,134,456,5550,7341,85
+140202,Lambayeque,Ferreñafe,Cañaris,255,1419,5677,13455,50,274,871,2272,2
+120302,Junin,Chanchamayo,Perene,344,1050,5599,43121,159,517,3165,18668,37
+110501,Ica,Pisco,Pisco,0,0,4819,57820,0,0,2706,12936,2
+021801,Ancash,Santa,Chimbote,414,1188,4475,20129,311,975,3085,13085,7
+050403,Ayacucho,Huanta,Huamanguilla,3,329,4330,5836,2,327,4058,5350,0
+160108,Loreto,Maynas,Punchana,8,448,3604,32465,7,351,1839,13875,3
+170103,Madre de Dios,Tambopata,Las Piedras,232,501,3299,15548,172,412,2904,14169,62
+150203,Lima,Barranca,Pativilca,737,1024,3212,6766,250,345,1588,2918,2
+210401,Puno,Chucuito,Juli,488,1075,3171,16469,794,1571,4633,13573,3
+250203,Ucayali,Atalaya,Tahuania,92,746,2981,6025,21,205,1020,2142,284
+050404,Ayacucho,Huanta,Iguain,87,695,2429,3059,68,446,2399,2946,4
+250106,Ucayali,Coronel Portillo,Nueva Requena,6,94,2408,3413,0,8,812,1306,401
+160201,Loreto,Alto Amazonas,Yurimaguas,49,377,2390,46724,19,380,1721,16381,48
+120303,Junin,Chanchamayo,Pichanaqui,123,362,2141,12626,89,204,1283,4637,36
+170101,Madre de Dios,Tambopata,Tambopata,69,359,1970,89440,93,481,2672,37901,16
+120608,Junin,Satipo,Rio Tambo,26,262,1877,6160,11,229,1355,4404,259
+060808,Cajamarca,Jaen,Pucara,34,293,1814,7229,20,175,967,3374,1
+250202,Ucayali,Atalaya,Sepahua,118,768,1796,3147,24,246,666,1240,112
+170302,Madre de Dios,Tahuamanu,Iberia,30,100,1692,6188,33,101,1141,3607,14
+150201,Lima,Barranca,Barranca,0,13,1585,3500,0,1,1428,2623,0
+021016,Ancash,Huari,Uco,96,299,1489,1502,70,275,1325,1328,1
+250105,Ucayali,Coronel Portillo,Yarinacocha,22,136,1396,24680,29,246,2475,19610,121
+180101,Moquegua,Mariscal Nieto,Moquegua,109,174,1261,71444,327,542,3103,48871,63
+080902,Cusco,La Convencion,Echarate,58,184,1194,2872,24,104,1009,1938,6
+020302,Ancash,Antonio Raymondi,Aczo,13,96,1049,1528,0,21,606,950,2
+060807,Cajamarca,Jaen,Pomahuaca,125,321,1033,4816,60,136,435,1584,2
+120135,Junin,Huancayo,Santo Domingo de Acobamba,0,0,977,2814,0,0,369,1191,18
+140203,Lambayeque,Ferreñafe,Incahuasi,0,1,940,2023,0,1,360,848,0
+190308,Pasco,Oxapampa,Constitucion,47,161,866,2341,10,48,289,963,27
+120699,Junin,Satipo,Mazamari - Pangoa,20,98,838,1756,15,72,655,1120,263
+160113,Loreto,Maynas,San Juan Bautista,5,31,823,3421,1,13,354,1846,9
+120607,Junin,Satipo,Rio Negro,0,68,799,6729,0,28,168,973,18
+020306,Ancash,Antonio Raymondi,San Juan de Rontoy,0,0,761,1045,0,0,514,703,9
+170102,Madre de Dios,Tambopata,Inambari,33,147,750,5013,22,56,418,3046,12
+040701,Arequipa,Islay,Mollendo,23,47,718,4081,99,167,927,3010,10
+250201,Ucayali,Atalaya,Raimondi,119,273,663,2076,99,236,582,1533,206
+160211,Loreto,Alto Amazonas,Teniente Cesar Lopez Rojas,32,162,603,1870,5,53,208,539,21
+210503,Puno,El Collao,Pilcuyo,0,3,589,4035,0,3,1116,9209,2
+160601,Loreto,Ucayali,Contamana,192,216,586,1455,51,62,186,443,53
+060602,Cajamarca,Cutervo,Callayuc,10,19,561,3867,1,3,232,1701,1
+220902,San Martin,San Martin,Alberto Leveau,0,2,557,944,0,0,311,499,0
+131203,La Libertad,Viru,Guadalupito,0,0,549,6761,0,0,238,3337,2
+160103,Loreto,Maynas,Fernando Lores,62,98,546,1828,12,26,185,692,6
+170303,Madre de Dios,Tahuamanu,Tahuamanu,4,16,517,1135,5,21,508,1211,29
+210114,Puno,Puno,Tiquillaca,20,78,497,1237,28,93,668,1647,5
+100604,Huanuco,Leoncio Prado,Jose Crespo y Castillo,1,25,490,17290,1,19,469,8050,6
+250103,Ucayali,Coronel Portillo,Iparia,10,212,446,1353,4,25,82,425,49
+021808,Ancash,Santa,Santa,0,0,412,23218,0,0,174,6598,0
+110506,Ica,Pisco,San Andres,0,0,378,5775,0,0,272,3750,3
+210501,Puno,El Collao,Ilave,0,0,348,2332,0,0,923,6627,0
+220908,San Martin,San Martin,Juan Guerra,0,1,346,4138,0,3,196,2624,3
+110504,Ica,Pisco,Independencia,0,0,328,5460,0,0,274,2811,2
+230201,Tacna,Candarave,Candarave,24,36,324,1814,46,60,381,2464,3
+170301,Madre de Dios,Tahuamanu,Iñapari,14,34,246,2725,13,28,244,2298,9
+170104,Madre de Dios,Tambopata,Laberinto,7,41,245,1335,0,22,136,907,12
+160509,Loreto,Requena,Tapiche,225,225,226,409,0,0,0,34,1
+060804,Cajamarca,Jaen,Colasay,31,43,211,3394,8,11,100,1908,0
+140310,Lambayeque,Lambayeque,Salas,0,23,194,976,0,9,123,1096,2
+100901,Huanuco,Puerto Inca,Puerto Inca,0,4,150,709,0,8,104,494,117
+040108,Arequipa,Arequipa,La Joya,0,1,132,4456,0,1,30,6797,43
+100904,Huanuco,Puerto Inca,Tournavista,3,15,108,540,3,6,48,218,44
+100902,Huanuco,Puerto Inca,Codo del Pozuzo,2,41,104,216,0,0,0,0,24
+110503,Ica,Pisco,Humay,0,0,95,545,0,0,54,419,4
+050107,Ayacucho,Huamanga,Pacaycasa,0,0,84,2610,0,0,129,2366,0
+040125,Arequipa,Arequipa,Vitor,0,3,72,214,0,24,597,1951,0
+050401,Ayacucho,Huanta,Huanta,0,0,71,42368,0,0,127,17884,0
+150127,Lima,Lima,Punta Negra,0,0,61,7671,0,0,17,5392,1
+220914,San Martin,San Martin,Shapaja,0,6,56,1225,0,19,94,975,5
+210101,Puno,Puno,Puno,1,13,55,225,0,17,57,250,1
+200201,Piura,Ayabaca,Ayabaca,0,0,53,2033,0,0,15,650,9
+160112,Loreto,Maynas,Belen,0,0,40,795,0,0,20,508,4
+250102,Ucayali,Coronel Portillo,Campoverde,0,0,36,436,0,0,17,244,74
+060607,Cajamarca,Cutervo,Querocotillo,0,0,34,918,0,0,13,451,3
+021702,Ancash,Recuay,Catac,3,8,31,1162,1,6,17,952,3
+250104,Ucayali,Coronel Portillo,Masisea,6,9,31,170,6,9,26,174,273
+021710,Ancash,Recuay,Ticapampa,0,5,29,2480,0,0,12,1966,0
+160210,Loreto,Alto Amazonas,Santa Cruz,5,5,28,1358,2,2,11,351,53
+180104,Moquegua,Mariscal Nieto,Samegua,0,0,24,9302,0,0,36,5194,0
+021010,Ancash,Huari,Paucas,0,0,19,1358,0,0,6,876,0
+170203,Madre de Dios,Manu,Madre de Dios,0,0,16,240,0,0,1,45,0
+040207,Arequipa,Camana,Quilca,2,2,10,172,4,4,10,81,1
+100704,Huanuco,Marañon,La Morada,0,0,9,96,0,0,19,141,3
+021002,Ancash,Huari,Anra,0,0,6,1620,0,0,0,1117,3
+020304,Ancash,Antonio Raymondi,Chingas,0,0,5,2047,0,0,4,1507,0
+230405,Tacna,Tarata,Sitajara,0,0,5,267,0,0,3,509,0
+230406,Tacna,Tarata,Susapaya,0,0,2,413,0,0,3,785,0
+190304,Pasco,Oxapampa,Palcazu,0,0,1,235,0,0,0,152,12
+250301,Ucayali,Padre Abad,Padre Abad,0,0,0,1,0,0,0,0,34
+250302,Ucayali,Padre Abad,Irazola,0,0,0,7,0,0,0,0,82
+040121,Arequipa,Arequipa,Santa Rita de Siguas,0,0,0,8,0,0,0,8,0
+230206,Tacna,Candarave,Quilahuani,0,0,0,645,0,0,0,607,0
+040704,Arequipa,Islay,Islay,0,0,0,0,0,0,0,1,0
+040520,Arequipa,Caylloma,Majes,0,0,0,34,0,0,0,129,0
+020301,Ancash,Antonio Raymondi,Llamellin,0,0,0,590,0,0,0,369,0
+020108,Ancash,Huaraz,Olleros,0,0,0,1,0,0,0,2,0
+210115,Puno,Puno,Vilque,0,0,0,144,0,0,0,280,0
+160106,Loreto,Maynas,Mazan,0,0,0,70,0,0,0,17,1
+120601,Junin,Satipo,Satipo,0,0,0,9,0,0,0,4,29
+021005,Ancash,Huari,Huacachi,0,0,0,365,0,0,0,259,0
+190307,Pasco,Oxapampa,Villa Rica,0,0,0,46,0,0,0,17,0
+220913,San Martin,San Martin,Sauce,0,0,0,258,0,0,0,114,0
+160101,Loreto,Maynas,Iquitos,0,0,0,286,0,0,0,252,0
+220704,San Martin,Picota,Pilluana,0,0,0,20,0,0,0,9,4
+220702,San Martin,Picota,Buenos Aires,0,0,0,128,0,0,0,85,2
+160603,Loreto,Ucayali,Padre Marquez,0,0,0,1,0,0,0,0,97
+220909,San Martin,San Martin,La Banda de Shilcayo,0,0,0,398,0,0,0,331,1
+021803,Ancash,Santa,Coishco,0,0,0,10876,0,0,0,3024,0
+210110,Puno,Puno,Paucarcolla,0,0,0,0,0,0,0,1,0
+021701,Ancash,Recuay,Recuay,0,0,0,98,0,0,0,101,6
+021409,Ancash,Ocros,San Pedro,0,0,0,13,0,0,0,0,0
+120301,Junin,Chanchamayo,Chanchamayo,0,0,0,2231,0,0,0,946,5
+150204,Lima,Barranca,Supe,0,0,0,170,0,0,0,76,0
+150123,Lima,Lima,Pachacamac,0,0,0,15523,0,0,0,5978,0
+090707,Huancavelica,Tayacaja,Huachocolpa,0,0,0,16,0,0,0,6,10
+150129,Lima,Lima,San Bartolo,0,0,0,445,0,0,0,213,0
+120124,Junin,Huancayo,Pariahuanca,0,0,0,595,0,0,0,363,14
+220901,San Martin,San Martin,Tarapoto,0,0,0,29,0,0,0,79,1
+150202,Lima,Barranca,Paramonga,0,0,0,69,0,0,0,35,0
+160507,Loreto,Requena,Saquena,0,0,0,722,0,0,0,60,1
+060611,Cajamarca,Cutervo,Santa Cruz,0,0,0,57,0,0,0,40,0
+021405,Ancash,Ocros,Cochas,0,0,0,36,0,0,0,12,0
+220505,San Martin,Lamas,Cuñumbuqui,0,0,0,4,0,0,0,1,10
+090305,Huancavelica,Angaraes,Chincho,0,0,0,392,0,0,0,343,0
+050115,Ayacucho,Huamanga,Jesus Nazareno,0,0,0,45,0,0,0,53,0
+050101,Ayacucho,Huamanga,Ayacucho,0,0,0,644,0,0,0,613,0
+050109,Ayacucho,Huamanga,San Jose de Ticllas,0,0,0,13,0,0,0,7,0
+050108,Ayacucho,Huamanga,Quinua,0,0,0,3470,0,0,0,3062,0
+120609,Junin,Satipo,Vizcatan del Ene,0,0,0,390,0,0,0,276,20
