@@ -24,6 +24,8 @@ Para Open Buildings se midieron primero los tamaños. Los archivos CSV por celda
 
 ## Método
 
+El código y los textos se desarrollaron con la asistencia de Claude Code (Anthropic, 2026). El detalle está en la [declaración sobre la contribución de la IA](#declaración-sobre-la-contribución-de-la-ia).
+
 1. **Limpieza de focos** (de 199 399 detecciones en el recuadro):
    - fuera del Perú: 64 405;
    - confianza baja (`confidence = l`): 10 413;
@@ -44,6 +46,42 @@ Para Open Buildings se midieron primero los tamaños. Los archivos CSV por celda
 6. **Prioridad (0–100)** por incendio activo:
    `prioridad = 100 × (0,35·n(log(1 + personas a 5 km)) + 0,25·n(huella en ha) + 0,20·n(FRP total en 24 h) + 0,20·n(focos en 24 h))`, donde n() es la normalización mín–máx entre los incendios activos no marcados.
 7. **Caso de estudio:** el incendio activo de vegetación (≥ 3 focos, huella ≥ 50 ha, sin marca) con más personas a 5 km. Para ese incendio se calcula, con `cKDTree` en metros, la distancia de cada edificación al foco más cercano.
+
+## Declaración sobre la contribución de la IA
+
+Usé Claude Code (Anthropic, 2026), con el modelo Claude Opus 5.5, como asistente de programación, análisis de datos y redacción entre el 21 y el 22 de octubre de 2026. Claude Code trabaja en la terminal: propone un plan, escribe el código en el repositorio y lo ejecuta en mi computadora.
+
+- **Para qué lo usé:**
+  - planificar el proyecto a partir de las instrucciones del curso;
+  - escribir el código del pipeline (`pipeline/`), del relato (`web/index.html`), del monitor en vivo (`live/`) y de la automatización en GitHub Actions;
+  - proponer el método: limpieza de focos, agrupación en incendios, filtro urbano, radios y fórmula de prioridad;
+  - redactar borradores de este README y de los textos de la página.
+- **Secciones donde aparece el resultado:** Método, 3 hallazgos con números, Mapa, Limitaciones, Dashboard y Monitor en vivo, además del código de `pipeline/`, `web/`, `live/` y `scripts/`.
+- **Ideas que aportó la IA y cómo las incorporé:**
+  - el formato de relato con mapa fijo, que elegí entre tres opciones;
+  - el filtro urbano y de fuentes fijas, que propuso al detectar que el primer resultado ponía una siderúrgica de Chimbote como el incendio con más gente cerca;
+  - el mapa bivariado de fuego y personas;
+  - el cálculo para cuatro radios y la comparación entre WorldPop y Open Buildings;
+  - el monitor en vivo como implementación separada;
+  - el modo película con pausas, adaptado del sitio de midudev.
+
+  Acepté cada idea después de revisarla, y corregí las que no correspondían, como la afiliación institucional.
+- **Qué decidí yo:**
+  - la pregunta (reto D);
+  - las fuentes de datos;
+  - el formato del relato;
+  - que el repositorio sea público y cómo se cita;
+  - la aprobación o corrección de cada propuesta antes de aplicarla.
+- **Cómo se verificó:**
+  - Las cifras no las escribió la IA: salen de ejecutar el código sobre datos abiertos.
+  - El pipeline las revisa con controles de cordura: 1873 distritos, una suma de WorldPop cercana a 34,3 millones y una exposición que crece con el radio.
+  - Los mapas se revisaron a la vista en escritorio y en celular.
+  - En el proceso se detectaron y corrigieron errores, como los falsos positivos urbanos y un fallo en el manejo de fechas que juntaba incendios de meses distintos.
+- **Prompts:** los principales están en el anexo [`docs/uso-de-ia.md`](docs/uso-de-ia.md), algunos resumidos o reformulados.
+
+**Referencia**
+
+Anthropic. (2026). *Claude Code* (Claude Opus 5.5) [Modelo de lenguaje grande]. https://claude.com/claude-code
 
 ## 3 hallazgos con números
 
