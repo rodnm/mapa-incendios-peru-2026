@@ -113,3 +113,58 @@ GitHub también ofrece la cita con el botón **Cite this repository**, que lee e
 - **Código** (`pipeline/`, `web/index.html`): [MIT](LICENSE).
 - **Textos, figuras y datos derivados** (este README, `outputs/`, `web/data/`, `web/assets/`): [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.es). Puedes reutilizarlos citando la autoría.
 - **Datos de terceros:** mantienen su propia licencia. WorldPop es CC BY 4.0, Google Open Buildings es CC BY 4.0 u ODbL y los focos de NASA FIRMS son datos abiertos de la NASA.
+
+## Monitor en vivo
+
+**Página:** https://rodnm.github.io/mapa-incendios-peru-2026/
+
+El monitor repite el cálculo de este trabajo con los datos más recientes de NASA FIRMS. Muestra los focos de las últimas 24 horas y de los últimos 7 días, los incendios activos de vegetación ordenados por prioridad, las personas y edificaciones a 1, 2, 5 y 10 km, los distritos más expuestos y la evolución de las cifras entre actualizaciones. La historia del 21 de octubre se publica en el mismo sitio, en [`historia/`](https://rodnm.github.io/mapa-incendios-peru-2026/historia/).
+
+### Frecuencia
+
+Un flujo de GitHub Actions (`.github/workflows/live.yml`) se ejecuta cada 3 horas, a los 30 minutos de las 00, 03, 06, …, 21 h UTC (19:30, 22:30, 01:30, … en hora de Lima), y también se puede lanzar a mano. Los satélites pasan sobre el Perú cerca de la 01:30 y de las 13:30 (hora de Lima), y FIRMS publica sus datos unas 3 horas después, así que la mayoría de las actualizaciones con datos nuevos llegan después de esos pasos. La página muestra la hora de los datos y avisa si tienen más de 12 horas.
+
+### Diferencias con la historia v1.0.0
+
+| | Historia (v1.0.0) | Monitor en vivo |
+|---|---|---|
+| Corte | Fijo: 2026-10-22 01:52 UTC (21 oct, 20:52 hora de Lima) | La hora de cada actualización |
+| Periodo de focos | Temporada desde el 1 de julio de 2026 | Ventana móvil de 120 días (`LIVE_WINDOW_DAYS`) |
+| Método | Limpieza, filtros urbano y de fuentes fijas, exposición a 1, 2, 5 y 10 km, prioridad | El mismo, con el mismo código |
+| Caso de estudio | Sí | No |
+| Archivos | `web/`, `outputs/` (congelados, etiqueta `v1.0.0`) | `build/live/`, publicado en GitHub Pages; no se versiona |
+
+Los archivos del monitor siguen el mismo formato que `web/data/` y agregan a `summary.json` los campos `mode`, `generated_at`, `data_through`, `window_start` y `window_days`. Además incluyen `history.csv`, con una fila por actualización.
+
+### Cómo funciona
+
+1. **Descarga incremental.** Los focos se guardan por producto y por día en `data/raw/firms_live/`. Cada ejecución baja solo los días que faltan, más el día en curso y los 2 anteriores, porque FIRMS corrige los datos casi en tiempo real (NRT). Las consultas se reintentan con espera exponencial ante errores HTTP y límites de uso.
+2. **Cachés.** Las edificaciones de Open Buildings se guardan en celdas de 0,25° (`data/raw/open_buildings/tiles_*`): la zona de cada incendio se redondea a esa grilla y cada celda se descarga una sola vez. WorldPop y los límites distritales se bajan una vez. El relieve y la capa de población del mapa se copian de `web/assets/`.
+3. **Control de calidad** (`pipeline/checks.py`). Antes de publicar se verifica que FIRMS haya entregado focos de las últimas 48 horas, que las cifras estén en rangos plausibles, que estén todos los archivos con JSON válido y que el total no pase de 6 MB. La salida se escribe en una carpeta temporal y reemplaza a la anterior solo si pasa todos los controles. Si algo falla, el proceso termina con error, no se publica nada y el sitio sigue mostrando la última versión buena.
+4. **Historial.** Al empezar, cada ejecución lee el `history.csv` publicado (`<LIVE_BASE_URL>data/history.csv`), le agrega una fila y lo limita a 2000 filas. Si el sitio no responde, usa la copia de `data/raw/live_state/`, que el flujo guarda en la caché de GitHub Actions. Así el historial se conserva sin commits en `main`. La variable de entorno `LIVE_BASE_URL` cambia la dirección del sitio; vacía, desactiva la lectura remota.
+
+### Cómo ejecutarlo en local
+
+```bash
+uv sync
+uv run python -m pipeline.run_all --mode live --out build/live   # usa FIRMS_MAP_KEY de .env
+uv run python scripts/build_site.py                              # arma site/
+uv run python -m http.server 8000 --bind 127.0.0.1 --directory site
+```
+
+La primera ejecución descarga unos 120 días de focos y las celdas de Open Buildings que hagan falta (unos 8 minutos); las siguientes reutilizan las cachés. `uv run python -m pipeline.checks build/live` vuelve a aplicar el control de calidad a una salida existente.
+
+El sitio queda en `site/`: el monitor en `site/index.html`, sus datos en `site/data/` y la historia congelada en `site/historia/`. Las carpetas `build/` y `site/` no se versionan.
+
+La versión congelada se protege así: `uv run python -m pipeline.run_all` (modo `snapshot`, el predeterminado) usa siempre el corte fijo y no escribe en `web/` ni en `outputs/` salvo que se agregue `--force`. Para comprobar que la versión 1.0.0 se reproduce sin tocar esas carpetas: `uv run python -m pipeline.run_all --mode snapshot --out build/snapshot`.
+
+### Publicación
+
+El flujo necesita el secreto `FIRMS_MAP_KEY` del repositorio y GitHub Pages configurado con la fuente **GitHub Actions**. Si el pipeline o el control de calidad fallan, el flujo no despliega.
+
+### Limitaciones del monitor
+
+- **Heurísticas automáticas.** Los filtros urbano y de fuentes fijas, la unión de focos en incendios y la prioridad se aplican sin revisión humana. Un foco aislado puede ser una quema agrícola, una industria o un error, y una quema real puede quedar excluida.
+- **Latencia de los datos NRT.** Los focos llegan unas 3 horas después de cada paso del satélite, y FIRMS los corrige durante los días siguientes. Una cifra puede cambiar en la siguiente actualización aunque no haya fuego nuevo.
+- **Retrasos del cron.** GitHub puede demorar las ejecuciones programadas varios minutos, o más en horas de mucha demanda, y desactiva los flujos programados de repositorios sin actividad durante 60 días.
+- **Las mismas limitaciones de la historia:** nubes, píxeles de 375 m, WorldPop como modelo, edificaciones que no son viviendas y radios que no son zonas de evacuación. El monitor no reemplaza los reportes del COEN, INDECI, SERFOR ni SERNANP.
