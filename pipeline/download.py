@@ -175,12 +175,15 @@ def _plan_chunks(sat: str, avail: pd.DataFrame, start: date, end: date) -> list[
     return chunks
 
 
-def download_firms(key: str, today: date | None = None) -> Path:
+def download_firms(key: str, today: date | None = None, cutoff: datetime | None = None) -> Path:
     """Download VIIRS hotspots for the season, per satellite, in <=5-day chunks.
 
     FIRMS area API semantics: /{DAY_RANGE}/{DATE} returns acquisitions from DATE to
     DATE + DAY_RANGE - 1 (verified empirically by checking acq_date in the response).
     Chunks are contiguous and non-overlapping; rows are deduplicated afterwards anyway.
+
+    With a fixed `cutoff` (snapshot mode) the download stops on that day and later
+    acquisitions are dropped, so the cut-off never moves to the time of the download.
     """
     out_dir = C.RAW / "firms"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -190,7 +193,7 @@ def download_firms(key: str, today: date | None = None) -> Path:
         return merged
 
     now = datetime.now(timezone.utc)
-    today = today or now.date()
+    today = today or (cutoff.date() if cutoff else now.date())
     start = date.fromisoformat(C.SEASON_START)
     avail = firms_availability(key)
     area = ",".join(str(v) for v in C.BBOX)
@@ -224,7 +227,8 @@ def download_firms(key: str, today: date | None = None) -> Path:
 
     with ThreadPoolExecutor(4) as ex:
         paths = list(ex.map(fetch, tasks))
-    cutoff = datetime.now(timezone.utc)
+    fixed_cutoff = cutoff is not None
+    cutoff = cutoff or datetime.now(timezone.utc)
 
     frames = []
     for task, p in zip(tasks, paths):
@@ -239,6 +243,9 @@ def download_firms(key: str, today: date | None = None) -> Path:
     before = len(df)
     df = df.drop_duplicates(subset=["latitude", "longitude", "acq_date", "acq_time", "sat_key"])
     df = df[df["acq_date"] >= C.SEASON_START]
+    if fixed_cutoff:
+        acq = pd.to_datetime(df["acq_date"] + " " + df["acq_time"], format="%Y-%m-%d %H%M", utc=True)
+        df = df[acq <= pd.Timestamp(cutoff)]
     df.to_csv(merged, index=False)
 
     lima = cutoff - timedelta(hours=5)
