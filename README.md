@@ -2,7 +2,9 @@
 
 **Autor:** Rodrigo Norabuena. Trabajo del curso Python Intermedio, Diplomatura de Especialización en Ciencia de Datos para las Ciencias Sociales y la Gestión Pública 2026, Pontificia Universidad Católica del Perú (PUCP). 21 de octubre de 2026.
 
-**Dashboard:** [¿A quién alcanza el fuego?](https://claude.ai/artifact/L7bWfwPE94wdHdTsXhLNcy), un relato con mapa que cruza los focos de calor con la población y las edificaciones.
+**Dashboard:** [¿A quién alcanza el fuego?](https://claude.ai/artifact/L7bWfwPE94wdHdTsXhLNcy), un relato con mapa que cruza los focos de calor con la población y las edificaciones. **Monitor en vivo:** [rodnm.github.io/mapa-incendios-peru-2026](https://rodnm.github.io/mapa-incendios-peru-2026/), actualizado cada 3 horas.
+
+![Portada del relato: los 123 580 focos de calor de la temporada 2026 sobre el relieve del Perú](docs/img/historia-portada.jpg)
 
 ## Pregunta
 
@@ -111,10 +113,16 @@ Las cifras salen de `outputs/hallazgos.json` y de `web/data/summary.json`.
 ```bash
 uv sync
 cp .env.example .env    # y pegar la clave: FIRMS_MAP_KEY=...
-uv run python -m pipeline.run_all
+uv run python -m pipeline.run_all --mode snapshot --out build/snapshot
 ```
 
-Las descargas quedan en `data/raw/` (no se versiona) y cada paso reutiliza lo que ya existe. Para un corte nuevo, borrar `data/raw/firms/` y `data/interim/`.
+Ese comando regenera el corte del 21 de octubre en `build/snapshot`, sin tocar los archivos publicados. Para sobrescribir `web/` y `outputs/`, se agrega `--force`. Las descargas quedan en `data/raw/` (no se versiona) y cada paso reutiliza lo que ya existe.
+
+El mapa estático `outputs/mapa_exposicion.png` se puede volver a dibujar solo, a partir de los datos ya exportados:
+
+```bash
+uv run python -m pipeline.static_map
+```
 
 ## Dashboard
 
@@ -127,6 +135,22 @@ uv run python -m http.server 8000 --directory web
 ```
 
 Usa deck.gl 9.0.38 y topojson-client 3.1.0 desde CDN.
+
+### Capturas
+
+| El fuego de hoy | Donde se cruzan |
+|---|---|
+| ![Focos de las últimas 24 horas y 7 días, con los incendios activos como anillos](docs/img/historia-fuego-hoy.jpg) | ![Distritos coloreados por focos en 7 días y personas a 5 km: donde ambos son altos, el distrito se vuelve blanco](docs/img/historia-cruce.jpg) |
+| **El radio cambia la respuesta** | **Las casas al borde del fuego** |
+| ![Zonas de exposición de 5 km alrededor de los incendios activos y gráfico de personas por radio](docs/img/historia-radio.jpg) | ![Edificaciones de Google Open Buildings coloreadas por distancia al fuego y píxeles VIIRS de 375 m a tamaño real](docs/img/historia-casas.jpg) |
+
+**Ver como película.** El botón de abajo a la derecha recorre los siete pasos solo, con pausas según el largo de cada texto, velocidades 1×, 2× y 0,5×, puntos por capítulo y una barra de progreso.
+
+![El relato en modo película, en el paso de población, con los controles de reproducción](docs/img/historia-pelicula.jpg)
+
+**En el celular.** El reproductor queda arriba, la leyenda se pliega en un botón y los detalles de cada tarjeta se abren con "Ver detalle", para que el mapa siempre se vea.
+
+![Tres pantallas de celular: la portada, el fuego de hoy y las casas al borde del fuego](docs/img/movil.jpg)
 
 ## Cómo citar
 
@@ -155,6 +179,8 @@ GitHub también ofrece la cita con el botón **Cite this repository**, que lee e
 ## Monitor en vivo
 
 **Página:** https://rodnm.github.io/mapa-incendios-peru-2026/
+
+![Monitor en vivo: fecha de los datos, cifras clave por radio y mapa de incendios activos](docs/img/monitor.jpg)
 
 El monitor repite el cálculo de este trabajo con los datos más recientes de NASA FIRMS. Muestra los focos de las últimas 24 horas y de los últimos 7 días, los incendios activos de vegetación ordenados por prioridad, las personas y edificaciones a 1, 2, 5 y 10 km, los distritos más expuestos y la evolución de las cifras entre actualizaciones. La historia del 21 de octubre se publica en el mismo sitio, en [`historia/`](https://rodnm.github.io/mapa-incendios-peru-2026/historia/).
 

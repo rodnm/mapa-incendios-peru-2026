@@ -117,6 +117,7 @@ b, strong { font-weight: 700; }
 /* Map overlays (always on the night surface) */
 .legend { position: absolute; z-index: 3; right: calc(var(--gutter-r) + 4px); bottom: calc(124px + env(safe-area-inset-bottom, 0px)); width: 15rem; box-sizing: border-box; color: var(--night-ink); background: rgba(7, 11, 20, 0.74); border: 1px solid var(--night-line); border-radius: 6px; padding: 0.75rem 0.875rem; font-size: 0.8125rem; line-height: 1.4; display: grid; gap: 0.6rem; }
 .legend h3 { font-family: var(--sans); font-size: 0.8125rem; font-weight: 700; color: var(--night-ink); }
+.lg-toggle { display: none; }
 .legend .muted { color: var(--night-muted); }
 .ramp { height: 8px; border-radius: 4px; }
 .ticks { position: relative; height: 1.1rem; font-size: 0.75rem; color: var(--night-muted); font-variant-numeric: tabular-nums; }
@@ -185,6 +186,12 @@ b, strong { font-weight: 700; }
   .card.open .extra { display: block; }
   .card.open .key.extra { display: flex; }
   .card:not(.open) #spark { display: none; }
+  /* The legend folds into a "Leyenda" button so the small phone map stays visible. */
+  .lg-toggle { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 36px; padding: 0 0.75rem; font: 600 0.75rem/1 var(--sans); color: var(--night-ink); background: rgba(7, 11, 20, 0.88); border: 1px solid var(--night-line); border-radius: 999px; cursor: pointer; justify-self: end; }
+  .lg-toggle::after { content: "▾"; }
+  .legend.open .lg-toggle::after { content: "▴"; }
+  .legend:not(.open) { width: auto; padding: 0; background: transparent; border: 0; }
+  .legend:not(.open) > :not(.lg-toggle) { display: none; }
   .more { display: inline-flex; justify-self: start; }
   /* Compact hero: title, date and count on one line, then the actions, so the map shows above it. */
   .hero .hud { padding-top: 0.6rem; gap: 0.4rem; }
@@ -324,7 +331,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
           <p>En las 24 horas previas al corte hubo <b class="fire-t" id="k-24h">n. d.</b> focos, y <b id="k-7d">n. d.</b> en los últimos 7 días. Al unir los focos que están a menos de 1 km y 48 horas entre sí, quedan <b id="k-fires">n. d.</b> incendios activos; <b id="k-big">n. d.</b> tienen una huella mayor a 100 hectáreas.</p>
           <p class="small extra">Cada anillo es un incendio activo y su tamaño muestra la huella: los píxeles de 375 m donde se detectó fuego. La huella no es el área quemada oficial.</p>
           <p class="small extra" id="k-urban" hidden></p>
-          <div>
+          <div class="extra">
             <p class="small">Los de mayor prioridad:</p>
             <ol class="list" id="top-fires"></ol>
           </div>
@@ -721,6 +728,14 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
       const B = C.buildings, dist = B.dist_m || [];
       A.caseType = B.type === 'point' ? 'point' : 'polygon';
       A.caseB = (B.coords || []).map((c, i) => ({ g: c, d: dist[i] ?? Infinity }));
+      // Footprints are sub-pixel at the story zoom; a centroid dot with a minimum size keeps them visible.
+      if (A.caseType === 'polygon') {
+        A.caseDots = A.caseB.map(b => {
+          let x = 0, y = 0;
+          for (const [lx, ly] of b.g) { x += lx; y += ly; }
+          return { p: [x / b.g.length, y / b.g.length], d: b.d };
+        });
+      }
       A.casePix = (C.hotspots || []).map(([lon, lat, frp, h]) => ({ ring: square(lon, lat, 187.5), frp, h, lon, lat }));
       A.caseRings = Object.entries(C.rings || {}).map(([k, path]) => ({ k, path }));
       A.caseRingLabels = A.caseRings.map(r => { let top = r.path[0]; for (const p of r.path) if (p[1] > top[1]) top = p; return { pos: top, text: `${r.k} km` }; });
@@ -788,6 +803,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     }
     if (A.caseB && o.case > 0.01 && S.caseVisible !== false) {
       if (A.caseType === 'polygon') {
+        L.push(new deck.ScatterplotLayer({ id: P + 'buildingdots', data: A.caseDots, getPosition: d => d.p, radiusUnits: 'meters', getRadius: 4, radiusMinPixels: 2, radiusMaxPixels: 4, getFillColor: d => distColor(d.d), opacity: o.case }));
         L.push(new deck.PolygonLayer({ id: P + 'buildings', data: A.caseB, getPolygon: d => d.g, getFillColor: d => distColor(d.d), stroked: false, pickable: true, opacity: o.case }));
       } else {
         L.push(new deck.ScatterplotLayer({ id: P + 'buildings', data: A.caseB, getPosition: d => d.g, radiusUnits: 'meters', getRadius: 5, radiusMinPixels: 1.5, getFillColor: d => distColor(d.d), pickable: true, opacity: o.case }));
@@ -827,7 +843,7 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
         // On phones the active card sits at the bottom; frame the map in the space left above it.
         const card = story.step >= 0 && stepEls[story.step] ? stepEls[story.step].querySelector('.card') : null;
         const cardH = card ? card.offsetHeight : h * 0.42;
-        pad = { left: 12, right: 12, top: story.step === 0 ? 80 : 150, bottom: Math.round(clamp(cardH + 0.05 * h + 16, h * 0.28, h * 0.62)) };
+        pad = { left: 12, right: 12, top: story.step === 0 ? 80 : 120, bottom: Math.round(clamp(cardH + 0.05 * h + 16, h * 0.28, h * 0.62)) };
       }
     } else pad = { left: 24, right: 24, top: 24, bottom: 24 };
     const sx = (pad.left + pad.right) / Math.max(1, w - 120), sy = (pad.top + pad.bottom) / Math.max(1, h - 120);
@@ -938,7 +954,8 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     else if (i === 3) html = legendBiv();
     else if (i === 4) html = legendBuffers(story.radius);
     else if (i === 5) html = legendCase();
-    $('#legend').innerHTML = html + sc;
+    const lg = $('#legend'), open = lg.classList.contains('open');
+    lg.innerHTML = `<button class="lg-toggle" type="button" aria-expanded="${open}">Leyenda</button>` + html + sc;
   }
 
   // One animation loop drives the season replay and the layer cross-fades.
@@ -1429,6 +1446,12 @@ footer { padding-block: 3rem 3.5rem; padding-left: var(--gutter-l); padding-righ
     buildTable();
     wireCopy();
     wireMore();
+    $('#legend').addEventListener('click', e => {
+      const b = e.target.closest('.lg-toggle');
+      if (!b) return;
+      const open = $('#legend').classList.toggle('open');
+      b.setAttribute('aria-expanded', String(open));
+    });
     if (COARSE) {
       let hintAt = 0, hintTimer = 0;
       exEl.addEventListener('touchmove', e => {

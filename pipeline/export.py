@@ -163,34 +163,10 @@ def pick_case_study(active: pd.DataFrame) -> tuple[pd.Series, list[str]]:
 
 
 # ----------------------------------------------------------------------------- static map
-def static_map(districts: gpd.GeoDataFrame, exp: pd.DataFrame, h7: pd.DataFrame, cutoff_lima: str) -> None:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import LogNorm
-
-    g = districts.merge(exp[["people_5km"]], left_on="id", right_index=True, how="left").to_crs(C.CRS_EQUAL_AREA)
-    act = gpd.GeoDataFrame(h7, geometry=gpd.points_from_xy(h7.lon, h7.lat), crs=C.CRS_GEO).to_crs(C.CRS_EQUAL_AREA)
-    fig, ax = plt.subplots(figsize=(8, 10.5), dpi=150)
-    fig.patch.set_facecolor("white")
-    g.plot(ax=ax, color="#eeeeea", edgecolor="#d6d6d0", linewidth=0.2)
-    e = g[g["people_5km"] > 0]
-    e.plot(ax=ax, column="people_5km", cmap="YlOrRd", norm=LogNorm(vmin=max(1, e["people_5km"].min()),
-           vmax=e["people_5km"].max()), edgecolor="#b07050", linewidth=0.25, legend=True,
-           legend_kwds={"label": "Personas a ≤ 5 km de un incendio activo (escala log)", "shrink": 0.5,
-                        "orientation": "horizontal", "pad": 0.02})
-    g.dissolve().boundary.plot(ax=ax, color="#555555", linewidth=0.6)
-    act.plot(ax=ax, color="#d7301f", markersize=2, alpha=0.7, label="Focos de incendios activos (últimos 7 días)")
-    ax.set_axis_off()
-    ax.legend(loc="lower left", fontsize=8, frameon=False)
-    ax.set_title("¿A quién alcanza el fuego? Personas a 5 km de un incendio activo\n"
-                 f"Perú, corte {cutoff_lima[:16].replace('T', ' ')} (hora de Lima)", fontsize=12)
-    fig.text(0.02, 0.01, "Fuentes: NASA FIRMS VIIRS (S-NPP, NOAA-20, NOAA-21); WorldPop R2025A 2026 (100 m); "
-             "límites distritales INEI.\nUn foco no es un incendio confirmado; las nubes pueden ocultar el fuego.",
-             fontsize=6.5, color="#444444")
-    fig.tight_layout()
-    fig.savefig(C.OUTPUTS / "mapa_exposicion.png", dpi=150)
-    plt.close(fig)
+def static_map() -> None:
+    """Draw outputs/mapa_exposicion.png from the files just exported, in the dashboard's style."""
+    from .static_map import render
+    render()
 
 
 # ----------------------------------------------------------------------------- main
@@ -224,7 +200,6 @@ def run() -> dict:
     bbox = [round(float(pts[:, 0].min()), 5), round(float(pts[:, 1].min()), 5),
             round(float(pts[:, 0].max()), 5), round(float(pts[:, 1].max()), 5)]
 
-    since7 = cutoff - pd.Timedelta(days=7)
     case = {
         "fire_id": int(cs_fire["cluster"]), "name": f"Incendio de {cs_fire['name']}", "district": cs_fire["name"],
         "province": cs_fire["province"], "department": cs_fire["department"],
@@ -241,9 +216,7 @@ def run() -> dict:
     dump(summary, C.WEB_DATA / "summary.json")
 
     # Static map + findings
-    act_ids = set(active.loc[~active["urban"], "cluster"])
-    h7 = h[(h["time"] >= since7) & h["cluster"].isin(act_ids)]
-    static_map(districts, exp, h7, meta["cutoff_lima"])
+    static_map()
     findings = build_findings(summary, table)
     (C.OUTPUTS / "hallazgos.json").write_text(json.dumps(findings, ensure_ascii=False, indent=1), encoding="utf-8")
     print("[export] case study:", summary["case_study"])
